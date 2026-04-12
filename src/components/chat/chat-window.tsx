@@ -106,6 +106,24 @@ export function ChatWindow() {
     return sseMessages;
   }, [storedMessages, sseMessages]);
 
+  const orderedMessages = React.useMemo(() => {
+    return [...allMessages].sort((a, b) => {
+      const aTime = Date.parse(a.timestamp);
+      const bTime = Date.parse(b.timestamp);
+
+      if (Number.isNaN(aTime) || Number.isNaN(bTime)) {
+        return 0;
+      }
+
+      return aTime - bTime;
+    });
+  }, [allMessages]);
+
+  const visibleMessages = React.useMemo(
+    () => orderedMessages.slice(-displayLimit),
+    [displayLimit, orderedMessages]
+  );
+
   // Update scroll when messages change
   React.useEffect(() => {
     if (allMessages.length !== lastMessageCountRef.current) {
@@ -348,6 +366,17 @@ export function ChatWindow() {
       {/* Messages */}
       <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto">
         <div className="space-y-3 p-4">
+          {displayLimit < orderedMessages.length && (
+            <div className="flex justify-center py-4">
+              <Button
+                variant="outline"
+                onClick={() => setDisplayLimit((prev) => prev + 100)}
+                className="text-sm"
+              >
+                แสดงเพิ่ม (+100 ข้อความ)
+              </Button>
+            </div>
+          )}
           {isEnded && allMessages.length > 0 && (
             <div className="flex justify-center">
               <Badge variant="outline" className="text-xs gap-1">
@@ -362,7 +391,7 @@ export function ChatWindow() {
               <p className="text-sm">{isConnecting ? "Connecting..." : "No messages yet"}</p>
             </div>
           )}
-          {allMessages.slice(-displayLimit).map((msg) => (
+          {visibleMessages.map((msg) => (
             <div
               key={msg.id}
               data-message-id={msg.id}
@@ -390,17 +419,6 @@ export function ChatWindow() {
               </div>
             </div>
           ))}
-          {displayLimit < allMessages.length && (
-            <div className="flex justify-center py-4">
-              <Button
-                variant="outline"
-                onClick={() => setDisplayLimit((prev) => prev + 100)}
-                className="text-sm"
-              >
-                แสดงเพิ่ม (+100 ข้อความ)
-              </Button>
-            </div>
-          )}
         </div>
       </div>
 
