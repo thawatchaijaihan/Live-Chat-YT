@@ -96,10 +96,12 @@ export async function GET(request: Request) {
       name: channelName || parsed.id,
       url: channelUrl,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch channel info";
+
     return Response.json({
       name: "",
-      error: error.message,
+      error: message,
     });
   }
 }

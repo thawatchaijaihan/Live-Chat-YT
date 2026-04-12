@@ -26,6 +26,7 @@ export function ChatWindow() {
   const [highlightedMsgId, setHighlightedMsgId] = React.useState<string | null>(null);
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const prevEndedRoomsRef = React.useRef<Set<string>>(new Set());
+  const [displayLimit, setDisplayLimit] = React.useState(100);
 
   // Active room
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
@@ -38,6 +39,7 @@ export function ChatWindow() {
       if (prevRoomIdRef.current && prevRoomIdRef.current !== activeRoomId) {
         disconnect();
         setStoredMessages([]);
+        setDisplayLimit(100); // Reset display limit when switching rooms
       }
 
       // Fetch existing messages from backend file storage
@@ -286,6 +288,11 @@ export function ChatWindow() {
               <span>Not connected</span>
             )}
             <span className="ml-auto">{allMessages.length} messages</span>
+            {displayLimit < allMessages.length && (
+              <span className="text-xs text-muted-foreground ml-2">
+                (แสดง {displayLimit})
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -346,7 +353,7 @@ export function ChatWindow() {
               <p className="text-sm">{isConnecting ? "Connecting..." : "No messages yet"}</p>
             </div>
           )}
-          {allMessages.map((msg) => (
+          {allMessages.slice(0, displayLimit).map((msg) => (
             <div
               key={msg.id}
               data-message-id={msg.id}
@@ -374,6 +381,17 @@ export function ChatWindow() {
               </div>
             </div>
           ))}
+          {displayLimit < allMessages.length && (
+            <div className="flex justify-center py-4">
+              <Button
+                variant="outline"
+                onClick={() => setDisplayLimit((prev) => prev + 100)}
+                className="text-sm"
+              >
+                แสดงเพิ่ม (+100 ข้อความ)
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 

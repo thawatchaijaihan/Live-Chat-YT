@@ -6,14 +6,32 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useChatRooms } from "@/lib/chat-rooms-context";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 
 export function DashboardContent() {
   const { rooms, activeRoomId, addRoom, removeRoom, setActiveRoom, fetchRoomStatus } = useChatRooms();
   const [newRoomName, setNewRoomName] = React.useState("");
   const [newRoomInput, setNewRoomInput] = React.useState("");
   const [isFetchingName, setIsFetchingName] = React.useState(false);
+  const [errors, setErrors] = React.useState<string[]>([]);
   const fetchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Debug: log rooms changes
+  React.useEffect(() => {
+    console.log("[Dashboard] rooms.length:", rooms.length, "rooms:", JSON.stringify(rooms.map(r => ({id: r.id, name: r.name}))));
+  }, [rooms]);
+
+  // Show errors with more visibility
+  console.log("[Dashboard] Rendering with errors:", errors.length);
+  React.useEffect(() => {
+    const originalError = console.error;
+    console.error = (...args) => {
+      const message = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+      setErrors(prev => [...prev.slice(-9), `[${new Date().toLocaleTimeString()}] ${message}`]);
+      originalError.apply(console, args);
+    };
+    return () => { console.error = originalError; };
+  }, []);
 
   // Poll room status every 3 seconds when there are active rooms
   React.useEffect(() => {
@@ -101,6 +119,25 @@ export function DashboardContent() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Error Console Display */}
+      {errors.length > 0 && (
+        <Card className="border-destructive/50 bg-destructive/10">
+          <CardHeader className="py-2 px-4">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              Console Errors ({errors.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="bg-black/80 rounded-lg p-3 max-h-40 overflow-y-auto font-mono text-xs text-red-400">
+              {errors.map((err, i) => (
+                <div key={i} className="whitespace-pre-wrap break-all">{err}</div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div>
         <h2 className="text-2xl font-bold">Live Chat Control</h2>
         <p className="text-muted-foreground">Manage your YouTube live chat rooms</p>

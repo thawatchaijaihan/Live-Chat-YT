@@ -56,14 +56,13 @@ export async function GET(request: Request) {
   const encoder = new TextEncoder();
   const parsed = parseYouTubeInput(room.input);
   let isControllerClosed = false;
+  let chat: LiveChat | null = null;
 
   // Update room status to connecting
   storage.updateRoom(roomId, { isConnecting: true, isEnded: false, error: null });
 
   const stream = new ReadableStream({
     async start(controller) {
-      let chat: LiveChat | null = null;
-
       const sendEvent = (event: string, data: object) => {
         if (isControllerClosed) return;
         try {
@@ -83,22 +82,31 @@ export async function GET(request: Request) {
           sendEvent("start", { liveId });
         });
 
-        chat.on("chat", (item: any) => {
+        chat.on("chat", (item) => {
           const message = {
             id: item.id || Date.now().toString(),
             author: {
               name: item.author?.name || "Anonymous",
               thumbnail: item.author?.thumbnail?.url,
-              isVerified: item.author?.isVerified || false,
-              isOwner: item.author?.isOwner || false,
-              isMembership: item.author?.isMembership || false,
+              isVerified: item.isVerified || false,
+              isOwner: item.isOwner || false,
+              isMembership: item.isMembership || false,
             },
-            message: (item.message || []).map((msg: any) => ({
-              type: msg.type === "emoji" ? "emoji" : msg.type === "image" ? "image" : "text",
-              text: msg.text,
-              emojiUrl: msg.emojiUrl,
-              emojiAlt: msg.emojiAlt,
-            })),
+            message: item.message.map((msg) => {
+              if ("emojiText" in msg) {
+                return {
+                  type: "emoji" as const,
+                  text: msg.emojiText,
+                  emojiUrl: msg.url,
+                  emojiAlt: msg.alt,
+                };
+              }
+
+              return {
+                type: "text" as const,
+                text: msg.text,
+              };
+            }),
             timestamp: item.timestamp ? new Date(item.timestamp).toISOString() : new Date().toISOString(),
             isMembership: item.isMembership || false,
             isSuperChat: !!item.superchat,
@@ -125,20 +133,21 @@ export async function GET(request: Request) {
         chat.on("error", (err: unknown) => {
           const errorMessage = err instanceof Error ? err.message : String(err);
           storage.updateRoom(roomId, { isConnected: false, isConnecting: false, error: errorMessage });
-          sendEvent("error", { message: errorMessage });
+          sendEvent("chat-error", { message: errorMessage });
           try {
             controller.close();
           } catch {
             // Controller already closed
           }
           isControllerClosed = true;
+          chat?.stop(errorMessage);
         });
 
         await chat.start();
-      } catch (err: any) {
+      } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : String(err);
         storage.updateRoom(roomId, { isConnected: false, isConnecting: false, error: errorMessage });
-        sendEvent("error", { message: errorMessage });
+        sendEvent("chat-error", { message: errorMessage });
         try {
           controller.close();
         } catch {
@@ -149,6 +158,7 @@ export async function GET(request: Request) {
     },
     cancel() {
       isControllerClosed = true;
+      chat?.stop("Client disconnected");
     },
   });
 

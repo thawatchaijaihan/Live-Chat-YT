@@ -1,7 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
 
-const DATA_DIR = path.join(process.cwd(), "data", "rooms");
+const BUNDLED_DATA_DIR = path.join(process.cwd(), "data", "rooms");
+const DATA_DIR = process.env.VERCEL
+  ? path.join("/tmp", "live-chat-yt", "rooms")
+  : BUNDLED_DATA_DIR;
+let isDataDirInitialized = false;
 
 export interface ChatRoom {
   id: string;
@@ -36,6 +40,18 @@ export interface YouTubeMessage {
   amount?: string;
 }
 
+function initializeDataDir() {
+  if (isDataDirInitialized) return;
+
+  ensureDir(DATA_DIR);
+
+  if (DATA_DIR !== BUNDLED_DATA_DIR && !fs.existsSync(getRoomsFile()) && fs.existsSync(BUNDLED_DATA_DIR)) {
+    fs.cpSync(BUNDLED_DATA_DIR, DATA_DIR, { recursive: true });
+  }
+
+  isDataDirInitialized = true;
+}
+
 // Ensure data directory exists
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) {
@@ -53,6 +69,7 @@ function getRoomsFile(): string {
 
 // Room operations
 export function getRooms(): ChatRoom[] {
+  initializeDataDir();
   const file = getRoomsFile();
   if (!fs.existsSync(file)) {
     return [];
@@ -66,7 +83,7 @@ export function getRooms(): ChatRoom[] {
 }
 
 export function saveRooms(rooms: ChatRoom[]): void {
-  ensureDir(DATA_DIR);
+  initializeDataDir();
   fs.writeFileSync(getRoomsFile(), JSON.stringify(rooms, null, 2));
 }
 
@@ -182,6 +199,7 @@ export function removeRoom(id: string): boolean {
 
 // Message operations
 export function getMessages(roomId: string): YouTubeMessage[] {
+  initializeDataDir();
   const file = path.join(getRoomDir(roomId), "messages.json");
   if (!fs.existsSync(file)) {
     return [];
@@ -195,6 +213,7 @@ export function getMessages(roomId: string): YouTubeMessage[] {
 }
 
 export function saveMessages(roomId: string, messages: YouTubeMessage[]): void {
+  initializeDataDir();
   const roomDir = getRoomDir(roomId);
   ensureDir(roomDir);
   const file = path.join(roomDir, "messages.json");

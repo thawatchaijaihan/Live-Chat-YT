@@ -193,7 +193,7 @@ export function ViewersContent() {
             <Search className="h-16 w-16 mb-4 opacity-20" />
             <p className="text-lg font-medium mb-2">ยังไม่มีผลลัพธ์</p>
             <p className="text-sm">
-              ใส่ข้อมูลและกดปุ่ม "กรอง" เพื่อค้นหาข้อความ
+              ใส่ข้อมูลและกดปุ่ม &quot;กรอง&quot; เพื่อค้นหาข้อความ
             </p>
           </div>
         ) : (

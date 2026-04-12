@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { YouTubeMessage } from "./file-storage";
+import type { YouTubeMessage } from "./file-storage";
 
 interface YouTubeChatContextType {
   messages: YouTubeMessage[];
@@ -42,8 +42,18 @@ export function YouTubeChatProvider({ children }: { children: React.ReactNode })
     const eventSource = new EventSource(`/api/chat?roomId=${encodeURIComponent(roomId)}`);
     eventSourceRef.current = eventSource;
 
+    const parseEventData = (e: MessageEvent) => {
+      if (!e.data) return null;
+      try {
+        return JSON.parse(e.data);
+      } catch {
+        return null;
+      }
+    };
+
     eventSource.addEventListener("start", (e) => {
-      const data = JSON.parse(e.data);
+      const data = parseEventData(e as MessageEvent);
+      if (!data) return;
       console.log("Connected to room:", roomId, "liveId:", data.liveId);
       setIsConnected(true);
       setIsConnecting(false);
@@ -51,21 +61,23 @@ export function YouTubeChatProvider({ children }: { children: React.ReactNode })
     });
 
     eventSource.addEventListener("chat", (e) => {
-      const data = JSON.parse(e.data);
+      const data = parseEventData(e as MessageEvent);
+      if (!data) return;
       setMessages((prev) => [...prev, data]);
     });
 
     eventSource.addEventListener("end", (e) => {
-      const data = JSON.parse(e.data);
-      console.log("Stream ended:", data.reason);
+      const data = parseEventData(e as MessageEvent);
+      console.log("Stream ended:", data?.reason);
       setIsConnected(false);
       setIsConnecting(false);
       setIsEnded(true);
       eventSource.close();
     });
 
-    eventSource.addEventListener("error", (e) => {
-      const data = JSON.parse((e as MessageEvent).data);
+    eventSource.addEventListener("chat-error", (e) => {
+      const data = parseEventData(e as MessageEvent);
+      if (!data) return;
       console.error("Chat error:", data.message);
       setError(data.message);
       setIsConnecting(false);
