@@ -10,16 +10,10 @@ import { ChatRoomsProvider, useChatRooms } from "@/lib/chat-rooms-context";
 
 function MainContent() {
   const [activeView, setActiveView] = React.useState<string>("dashboard");
-  const { fetchRooms, rooms } = useChatRooms();
-
-  // Debug: log activeView changes
-  React.useEffect(() => {
-    console.log("[MainContent] activeView:", activeView, "rooms:", rooms.length);
-  }, [activeView, rooms]);
+  const { fetchRooms } = useChatRooms();
 
   // Fetch rooms on mount
   React.useEffect(() => {
-    console.log("[MainContent] Fetching rooms on mount...");
     fetchRooms();
   }, [fetchRooms]);
 

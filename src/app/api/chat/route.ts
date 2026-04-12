@@ -1,5 +1,8 @@
 import { LiveChat } from "youtube-chat";
-import * as storage from "@/lib/file-storage";
+import * as db from "@/lib/db";
+import { sendToTelegram } from "@/lib/telegram";
+
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +14,7 @@ export async function GET(request: Request) {
     return new Response("Missing roomId parameter", { status: 400 });
   }
 
-  const room = storage.getRoom(roomId);
+  const room = db.getRoom(roomId);
   if (!room) {
     return new Response("Room not found", { status: 404 });
   }
@@ -59,7 +62,7 @@ export async function GET(request: Request) {
   let chat: LiveChat | null = null;
 
   // Update room status to connecting
-  storage.updateRoom(roomId, { isConnecting: true, isEnded: false, error: null });
+  db.updateRoom(roomId, { isConnecting: true, isEnded: false, error: null });
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -78,7 +81,7 @@ export async function GET(request: Request) {
         chat = new LiveChat(parsed);
 
         chat.on("start", (liveId: string) => {
-          storage.updateRoom(roomId, { isConnected: true, isConnecting: false, isEnded: false });
+          db.updateRoom(roomId, { isConnected: true, isConnecting: false, isEnded: false });
           sendEvent("start", { liveId });
         });
 
@@ -113,14 +116,19 @@ export async function GET(request: Request) {
             amount: item.superchat?.amount,
           };
 
-          // Save message to file
-          storage.addMessage(roomId, message);
+          // Save message to database
+          const isNewMessage = db.addMessage(roomId, message);
+
+          // Send to Telegram if room has telegramChatId
+          if (isNewMessage && room.telegramChatId && TELEGRAM_BOT_TOKEN) {
+            sendToTelegram(TELEGRAM_BOT_TOKEN, room.telegramChatId, message);
+          }
 
           sendEvent("chat", message);
         });
 
         chat.on("end", (reason?: string) => {
-          storage.updateRoom(roomId, { isConnected: false, isEnded: true });
+          db.updateRoom(roomId, { isConnected: false, isEnded: true });
           sendEvent("end", { reason });
           try {
             controller.close();
@@ -132,7 +140,7 @@ export async function GET(request: Request) {
 
         chat.on("error", (err: unknown) => {
           const errorMessage = err instanceof Error ? err.message : String(err);
-          storage.updateRoom(roomId, { isConnected: false, isConnecting: false, error: errorMessage });
+          db.updateRoom(roomId, { isConnected: false, isConnecting: false, error: errorMessage });
           sendEvent("chat-error", { message: errorMessage });
           try {
             controller.close();
@@ -146,7 +154,7 @@ export async function GET(request: Request) {
         await chat.start();
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : String(err);
-        storage.updateRoom(roomId, { isConnected: false, isConnecting: false, error: errorMessage });
+        db.updateRoom(roomId, { isConnected: false, isConnecting: false, error: errorMessage });
         sendEvent("chat-error", { message: errorMessage });
         try {
           controller.close();

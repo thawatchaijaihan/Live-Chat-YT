@@ -1,10 +1,10 @@
-import * as storage from "@/lib/file-storage";
+import * as db from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 // GET - Get all rooms
 export async function GET() {
-  const rooms = storage.getRooms();
+  const rooms = db.getRooms();
   return Response.json(rooms);
 }
 
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Missing name or input" }, { status: 400 });
     }
 
-    const result = storage.addRoom(name, input);
+    const result = db.addRoom(name, input);
     return Response.json(result, { status: result.isNew ? 201 : 200 });
   } catch (error) {
     return Response.json({ error: "Invalid request" }, { status: 400 });

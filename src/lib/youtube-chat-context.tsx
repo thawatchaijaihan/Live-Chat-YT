@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { YouTubeMessage } from "./file-storage";
+import type { YouTubeMessage } from "./db";
 
 interface YouTubeChatContextType {
   messages: YouTubeMessage[];
@@ -54,7 +54,6 @@ export function YouTubeChatProvider({ children }: { children: React.ReactNode })
     eventSource.addEventListener("start", (e) => {
       const data = parseEventData(e as MessageEvent);
       if (!data) return;
-      console.log("Connected to room:", roomId, "liveId:", data.liveId);
       setIsConnected(true);
       setIsConnecting(false);
       setIsEnded(false);
@@ -68,7 +67,6 @@ export function YouTubeChatProvider({ children }: { children: React.ReactNode })
 
     eventSource.addEventListener("end", (e) => {
       const data = parseEventData(e as MessageEvent);
-      console.log("Stream ended:", data?.reason);
       setIsConnected(false);
       setIsConnecting(false);
       setIsEnded(true);

@@ -1,4 +1,4 @@
-import * as storage from "@/lib/file-storage";
+import * as db from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const messages = storage.getMessages(id);
+  const messages = db.getMessages(id);
   return Response.json(messages);
 }
 
@@ -18,6 +18,6 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  storage.clearMessages(id);
+  db.clearMessages(id);
   return Response.json({ success: true });
 }

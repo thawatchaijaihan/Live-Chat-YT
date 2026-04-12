@@ -1,4 +1,4 @@
-import * as storage from "@/lib/file-storage";
+import * as db from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -13,21 +13,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 
   try {
-    const messages = storage.getMessages(id);
-    const results = messages.filter((msg) => {
-      // Search by author name
-      if (msg.author.name.toLowerCase().includes(query)) {
-        return true;
-      }
-      // Search in message content
-      if (msg.message.some((m) => m.text?.toLowerCase().includes(query))) {
-        return true;
-      }
-      return false;
-    });
-
-    // Return most recent results first, limit to 50
-    return Response.json(results.slice(-50).reverse());
+    const results = db.searchMessages(id, query);
+    return Response.json(results);
   } catch (error) {
     console.error("Search error:", error);
     return Response.json({ error: "Search failed" }, { status: 500 });

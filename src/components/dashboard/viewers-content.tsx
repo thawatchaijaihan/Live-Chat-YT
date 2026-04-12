@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useChatRooms } from "@/lib/chat-rooms-context";
-import { YouTubeMessage } from "@/lib/file-storage";
+import type { YouTubeMessage } from "@/lib/db";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useYouTubeChat } from "@/lib/youtube-chat-context";
 import { useChatRooms } from "@/lib/chat-rooms-context";
-import { YouTubeMessage } from "@/lib/file-storage";
+import type { YouTubeMessage } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { MessageSquare, Radio, ChevronDown, X, Plus, Loader2, WifiOff, Search } from "lucide-react";
 
@@ -42,10 +42,11 @@ export function ChatWindow() {
         setDisplayLimit(100); // Reset display limit when switching rooms
       }
 
-      // Fetch existing messages from backend file storage
+      // Fetch existing messages from SQLite
       getMessages(activeRoomId).then((msgs) => {
         setStoredMessages(msgs);
         lastMessageCountRef.current = msgs.length;
+        setDisplayLimit(100); // Reset to show latest 100
       });
 
       // Start SSE connection
@@ -70,7 +71,6 @@ export function ChatWindow() {
             const latestRoom = await fetchRoomStatus(room.id);
             if (latestRoom && latestRoom.isConnected && !latestRoom.isEnded) {
               // Room is now live again! Reconnect
-              console.log(`Room "${room.name}" is live again! Reconnecting...`);
               if (activeRoomId === room.id) {
                 // If this is the active room, reconnect
                 disconnect();
@@ -131,6 +131,15 @@ export function ChatWindow() {
           setTimeout(() => setHighlightedMsgId(null), 2000);
         }
         sessionStorage.removeItem("highlightMessageId");
+      } else if (allMessages.length > 0) {
+        // Auto scroll to bottom (latest messages) when opening chat room
+        setTimeout(() => {
+          if (containerRef.current) {
+            containerRef.current.scrollTop = containerRef.current.scrollHeight;
+            setIsAutoScrollEnabled(true);
+            setShowScrollButton(false);
+          }
+        }, 100);
       }
     }
   }, [activeRoomId, allMessages.length]);
@@ -353,7 +362,7 @@ export function ChatWindow() {
               <p className="text-sm">{isConnecting ? "Connecting..." : "No messages yet"}</p>
             </div>
           )}
-          {allMessages.slice(0, displayLimit).map((msg) => (
+          {allMessages.slice(-displayLimit).map((msg) => (
             <div
               key={msg.id}
               data-message-id={msg.id}

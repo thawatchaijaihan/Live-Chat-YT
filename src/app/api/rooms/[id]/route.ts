@@ -1,4 +1,4 @@
-import * as storage from "@/lib/file-storage";
+import * as db from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const room = storage.getRoom(id);
+  const room = db.getRoom(id);
 
   if (!room) {
     return Response.json({ error: "Room not found" }, { status: 404 });
@@ -24,7 +24,7 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const updates = await request.json();
-  const room = storage.updateRoom(id, updates);
+  const room = db.updateRoom(id, updates);
 
   if (!room) {
     return Response.json({ error: "Room not found" }, { status: 404 });
@@ -39,7 +39,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const success = storage.removeRoom(id);
+  const success = db.removeRoom(id);
 
   if (!success) {
     return Response.json({ error: "Room not found" }, { status: 404 });

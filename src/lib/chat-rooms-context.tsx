@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChatRoom, YouTubeMessage } from "./file-storage";
+import type { ChatRoom, YouTubeMessage } from "./db";
 
 interface ChatRoomsContextType {
   rooms: ChatRoom[];
@@ -25,19 +25,15 @@ export function ChatRoomsProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = React.useState(false);
 
   const fetchRooms = React.useCallback(async () => {
-    console.log("[fetchRooms] Starting...");
     try {
       const response = await fetch("/api/rooms");
-      console.log("[fetchRooms] Response status:", response.status);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       const data = await response.json();
-      console.log("[fetchRooms] Data received:", data.length, "rooms");
       setRooms(data);
     } catch (error) {
-      console.error("[fetchRooms] Error:", error);
-      throw error; // Re-throw to let component handle
+      console.error("Failed to fetch rooms:", error);
     }
   }, []);
 
