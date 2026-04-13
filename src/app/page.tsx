@@ -1,102 +1,45 @@
-"use client";
+import HomeClient from "./home-client";
+import * as db from "@/lib/db";
 
-import * as React from "react";
-import { Sidebar } from "@/components/dashboard/sidebar";
-import { DashboardContent } from "@/components/dashboard/dashboard-content";
-import { ViewersContent } from "@/components/dashboard/viewers-content";
-import { ChatWindow } from "@/components/chat/chat-window";
-import { YouTubeChatProvider } from "@/lib/youtube-chat-context";
-import { ChatRoomsProvider, useChatRooms } from "@/lib/chat-rooms-context";
+export const dynamic = "force-dynamic";
 
-function MainContent() {
-  const [activeView, setActiveView] = React.useState<string>("dashboard");
-  const { fetchRooms } = useChatRooms();
+type PageProps = {
+  searchParams?: Promise<{
+    roomId?: string | string[];
+    view?: string | string[];
+  }>;
+};
 
-  // Fetch rooms on mount
-  React.useEffect(() => {
-    fetchRooms();
-  }, [fetchRooms]);
-
-  return (
-    <>
-      {/* Sidebar for large screens - hidden on small screens */}
-      <div className="hidden lg:flex">
-        <Sidebar onNavigate={setActiveView} />
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        {/* Tab bar for small screens - hidden on large screens */}
-        <div className="lg:hidden border-b px-4 py-2 shrink-0">
-          <div className="flex gap-1">
-            <button
-              className={`px-3 py-1.5 text-sm rounded-md ${
-                activeView === "dashboard"
-                  ? "bg-secondary"
-                  : "hover:bg-accent"
-              }`}
-              onClick={() => setActiveView("dashboard")}
-            >
-              Dashboard
-            </button>
-            <button
-              className={`px-3 py-1.5 text-sm rounded-md ${
-                activeView === "chat"
-                  ? "bg-secondary"
-                  : "hover:bg-accent"
-              }`}
-              onClick={() => setActiveView("chat")}
-            >
-              Live Chat
-            </button>
-            <button
-              className={`px-3 py-1.5 text-sm rounded-md ${
-                activeView === "viewers"
-                  ? "bg-secondary"
-                  : "hover:bg-accent"
-              }`}
-              onClick={() => setActiveView("viewers")}
-            >
-              Filter
-            </button>
-          </div>
-        </div>
-
-        {/* Content based on active view */}
-        {activeView === "dashboard" && (
-          <div className="flex-1 overflow-auto">
-            <DashboardContent />
-          </div>
-        )}
-
-        {activeView === "chat" && (
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <ChatWindow />
-          </div>
-        )}
-
-        {activeView === "viewers" && (
-          <ViewersContent />
-        )}
-
-        {activeView !== "dashboard" && activeView !== "chat" && activeView !== "viewers" && (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            <p>Coming soon: {activeView}</p>
-          </div>
-        )}
-      </div>
-    </>
-  );
+function getInitialView(view: string | string[] | undefined) {
+  const value = Array.isArray(view) ? view[0] : view;
+  if (value === "chat" || value === "viewers") {
+    return value;
+  }
+  return "dashboard";
 }
 
-export default function Home() {
+function getInitialRoomId(roomId: string | string[] | undefined) {
+  return Array.isArray(roomId) ? roomId[0] : roomId;
+}
+
+export default async function Home({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const initialRooms = db.getRooms();
+  const requestedRoomId = getInitialRoomId(params?.roomId);
+  const initialActiveRoomId: string | null =
+    requestedRoomId && initialRooms.some((room) => room.id === requestedRoomId)
+    ? requestedRoomId
+    : initialRooms[0]?.id ?? null;
+  const initialMessagesByRoom = Object.fromEntries(
+    initialRooms.map((room) => [room.id, db.getMessages(room.id, 100)])
+  );
+
   return (
-    <ChatRoomsProvider>
-      <YouTubeChatProvider>
-        <div className="flex h-screen bg-background overflow-hidden">
-          <MainContent />
-        </div>
-      </YouTubeChatProvider>
-    </ChatRoomsProvider>
+    <HomeClient
+      initialActiveRoomId={initialActiveRoomId}
+      initialMessagesByRoom={initialMessagesByRoom}
+      initialRooms={initialRooms}
+      initialView={getInitialView(params?.view)}
+    />
   );
 }

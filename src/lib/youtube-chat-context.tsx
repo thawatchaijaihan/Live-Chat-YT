@@ -62,7 +62,7 @@ export function YouTubeChatProvider({ children }: { children: React.ReactNode })
     eventSource.addEventListener("chat", (e) => {
       const data = parseEventData(e as MessageEvent);
       if (!data) return;
-      setMessages((prev) => [...prev, data]);
+      setMessages((prev) => [...prev, data].slice(-500));
     });
 
     eventSource.addEventListener("end", (e) => {
@@ -76,15 +76,13 @@ export function YouTubeChatProvider({ children }: { children: React.ReactNode })
     eventSource.addEventListener("chat-error", (e) => {
       const data = parseEventData(e as MessageEvent);
       if (!data) return;
-      console.error("Chat error:", data.message);
       setError(data.message);
       setIsConnecting(false);
       setIsConnected(false);
       eventSource.close();
     });
 
-    eventSource.onerror = (err) => {
-      console.error("EventSource error:", err);
+    eventSource.onerror = () => {
       if (eventSource.readyState === EventSource.CLOSED) {
         setIsConnecting(false);
         setIsConnected(false);

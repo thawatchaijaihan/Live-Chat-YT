@@ -243,6 +243,15 @@ export function getMessages(roomId: string, limit = 1000, offset = 0): YouTubeMe
   return rows.map(mapMessageRow);
 }
 
+export function getMessagesSince(roomId: string, sinceTimestamp: string, limit = 300): YouTubeMessage[] {
+  const database = getDb();
+  const rows = database.prepare(
+    "SELECT * FROM messages WHERE roomId = ? AND timestamp >= ? ORDER BY timestamp ASC LIMIT ?"
+  ).all(roomId, sinceTimestamp, limit) as YouTubeMessageRow[];
+
+  return rows.map(mapMessageRow);
+}
+
 export function addMessage(roomId: string, message: YouTubeMessage): boolean {
   const database = getDb();
 

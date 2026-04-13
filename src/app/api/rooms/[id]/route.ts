@@ -1,4 +1,5 @@
 import * as db from "@/lib/db";
+import { stopChatCollector } from "@/lib/chat-collector";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,11 @@ export async function GET(
     return Response.json({ error: "Room not found" }, { status: 404 });
   }
 
-  return Response.json(room);
+  return Response.json(room, {
+    headers: {
+      "Cache-Control": "no-store, max-age=0",
+    },
+  });
 }
 
 // PATCH - Update a room
@@ -39,6 +44,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  stopChatCollector(id, "Room deleted");
   const success = db.removeRoom(id);
 
   if (!success) {

@@ -5,7 +5,11 @@ export const dynamic = "force-dynamic";
 // GET - Get all rooms
 export async function GET() {
   const rooms = db.getRooms();
-  return Response.json(rooms);
+  return Response.json(rooms, {
+    headers: {
+      "Cache-Control": "no-store, max-age=0",
+    },
+  });
 }
 
 // POST - Add a new room

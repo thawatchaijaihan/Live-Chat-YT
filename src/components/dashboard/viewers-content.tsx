@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useChatRooms } from "@/lib/chat-rooms-context";
 import type { YouTubeMessage } from "@/lib/db";
+import { formatThaiTime } from "@/lib/time";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -98,10 +99,6 @@ export function ViewersContent() {
   const getUserColor = (user: string) => {
     const colors = ["bg-red-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-purple-500", "bg-pink-500", "bg-indigo-500", "bg-orange-500", "bg-teal-500"];
     return colors[user.charCodeAt(0) % colors.length];
-  };
-
-  const formatTime = (date: string) => {
-    return new Date(date).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
   };
 
   const renderMessageContent = (msg: YouTubeMessage) => {
@@ -258,7 +255,7 @@ export function ViewersContent() {
                           {msg.author.isVerified && <Badge variant="secondary" className="text-xs">✓</Badge>}
                           {msg.isMembership && <Badge className="text-xs bg-purple-500">Member</Badge>}
                           {msg.isSuperChat && msg.amount && <Badge className="text-xs bg-yellow-500 text-black">${msg.amount}</Badge>}
-                          <span className="text-xs text-muted-foreground">{formatTime(msg.timestamp)}</span>
+                          <span className="text-xs text-muted-foreground">{formatThaiTime(msg.timestamp)}</span>
                           <Badge variant="outline" className="text-xs ml-auto">
                             {result.roomName}
                           </Badge>

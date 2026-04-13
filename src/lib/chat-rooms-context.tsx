@@ -3,15 +3,21 @@
 import * as React from "react";
 import type { ChatRoom, YouTubeMessage } from "./db";
 
+type GetMessagesOptions = number | {
+  after?: string;
+  limit?: number;
+};
+
 interface ChatRoomsContextType {
   rooms: ChatRoom[];
   activeRoomId: string | null;
+  initialMessagesByRoom: Record<string, YouTubeMessage[]>;
   loading: boolean;
   setActiveRoom: (id: string | null) => void;
   fetchRooms: () => Promise<void>;
   addRoom: (name: string, input: string) => Promise<string | null>;
   removeRoom: (id: string) => Promise<void>;
-  getMessages: (roomId: string) => Promise<YouTubeMessage[]>;
+  getMessages: (roomId: string, options?: GetMessagesOptions) => Promise<YouTubeMessage[]>;
   clearMessages: (roomId: string) => Promise<void>;
   fetchRoomStatus: (roomId: string) => Promise<ChatRoom | null>;
   searchMessages: (roomId: string, query: string) => Promise<YouTubeMessage[]>;
@@ -19,14 +25,26 @@ interface ChatRoomsContextType {
 
 const ChatRoomsContext = React.createContext<ChatRoomsContextType | null>(null);
 
-export function ChatRoomsProvider({ children }: { children: React.ReactNode }) {
-  const [rooms, setRooms] = React.useState<ChatRoom[]>([]);
-  const [activeRoomId, setActiveRoomId] = React.useState<string | null>(null);
+export function ChatRoomsProvider({
+  children,
+  initialRooms = [],
+  initialMessagesByRoom = {},
+  initialActiveRoomId,
+}: {
+  children: React.ReactNode;
+  initialRooms?: ChatRoom[];
+  initialMessagesByRoom?: Record<string, YouTubeMessage[]>;
+  initialActiveRoomId?: string | null;
+}) {
+  const [rooms, setRooms] = React.useState<ChatRoom[]>(initialRooms);
+  const [activeRoomId, setActiveRoomId] = React.useState<string | null>(
+    initialActiveRoomId ?? initialRooms[0]?.id ?? null
+  );
   const [loading, setLoading] = React.useState(false);
 
   const fetchRooms = React.useCallback(async () => {
     try {
-      const response = await fetch("/api/rooms");
+      const response = await fetch("/api/rooms", { cache: "no-store" });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -39,7 +57,7 @@ export function ChatRoomsProvider({ children }: { children: React.ReactNode }) {
 
   const fetchRoomStatus = React.useCallback(async (roomId: string): Promise<ChatRoom | null> => {
     try {
-      const response = await fetch(`/api/rooms/${roomId}`);
+      const response = await fetch(`/api/rooms/${roomId}`, { cache: "no-store" });
       if (response.ok) {
         const room = await response.json();
         setRooms((prev) => prev.map((r) => (r.id === roomId ? room : r)));
@@ -102,9 +120,19 @@ export function ChatRoomsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [activeRoomId]);
 
-  const getMessages = React.useCallback(async (roomId: string): Promise<YouTubeMessage[]> => {
+  const getMessages = React.useCallback(async (roomId: string, options?: GetMessagesOptions): Promise<YouTubeMessage[]> => {
     try {
-      const response = await fetch(`/api/rooms/${roomId}/messages`);
+      const limit = typeof options === "number" ? options : options?.limit;
+      const after = typeof options === "number" ? undefined : options?.after;
+      const searchParams = new URLSearchParams();
+      if (limit) searchParams.set("limit", String(limit));
+      if (after) searchParams.set("after", after);
+
+      const query = searchParams.toString();
+      const response = await fetch(
+        `/api/rooms/${roomId}/messages${query ? `?${query}` : ""}`,
+        { cache: "no-store" }
+      );
       if (response.ok) {
         return await response.json();
       }
@@ -141,6 +169,7 @@ export function ChatRoomsProvider({ children }: { children: React.ReactNode }) {
       value={{
         rooms,
         activeRoomId,
+        initialMessagesByRoom,
         loading,
         setActiveRoom: setActiveRoomId,
         fetchRooms,
