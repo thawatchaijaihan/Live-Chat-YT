@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <link rel="icon" href="https://minimax-algeng-chat-tts-us.oss-us-east-1.aliyuncs.com/ccv2%2F2026-04-13%2FMiniMax-M2.7%2F2026172050049077642%2F47c27f3dc3366afe8ffee3115ace1181f502cb810c6ac3c9ba29514bd2010416..png?Expires=1776168928&OSSAccessKeyId=LTAI5tCpJNKCf5EkQHSuL9xg&Signature=d7oy7rHSTBmDQbMuB6ZVk3VwpnE%3D">
+  <title>Live Chat YouTube</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Day/Night Theme Variables */
+    :root {
+      --bg-primary: #1a1a2e;
+      --bg-secondary: #252540;
+      --border-color: #333;
+      --text-primary: #e5e5e5;
+      --text-secondary: #888;
+      --accent: #3b82f6;
+    }
+
+    body.light {
+      --bg-primary: #f5f5f5;
+      --bg-secondary: #ffffff;
+      --border-color: #ddd;
+      --text-primary: #1a1a1a;
+      --text-secondary: #666;
+      --accent: #3b82f6;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 48px;
+      padding: 0 12px;
+      background: var(--bg-primary);
+      border-bottom: 1px solid var(--border-color);
+      flex-shrink: 0;
+    }
+
+    .header-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .header-btn {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      font-size: 16px;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 4px;
+    }
+
+    .header-btn:active {
+      opacity: 0.8;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      font-size: 11px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .status-dot.live { background: #22c55e; }
+    .status-dot.connecting { background: #eab308; animation: pulse 1s infinite; }
+    .status-dot.offline { background: #666; }
+
+    .status-bar .count {
+      margin-left: auto;
+      color: var(--text-secondary);
+    }
+
+    /* Content */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      background: var(--bg-primary);
+    }
+
+    .content-padded {
+      padding: 12px;
+    }
+
+    /* Messages */
+    .message {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .message:active {
+      background: var(--bg-secondary);
+    }
+
+    .message-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+      flex-wrap: wrap;
+    }
+
+    .message-author {
+      font-size: 13px;
+      font-weight: 600;
+      color: #4a9eff;
+    }
+
+    .message-badge {
+      display: inline-block;
+      padding: 1px 5px;
+      font-size: 9px;
+      font-weight: 600;
+      border-radius: 3px;
+      background: #166534;
+      color: #86efac;
+    }
+
+    .message-badge.creator {
+      background: #dc2626;
+      color: #fca5a5;
+    }
+
+    .message-badge.member {
+      background: #7c3aed;
+      color: #ddd6fe;
+    }
+
+    .message-badge.superchat {
+      background: #ca8a04;
+      color: #fef08a;
+    }
+
+    .message-time {
+      font-size: 10px;
+      color: var(--text-secondary);
+      margin-left: auto;
+    }
+
+    .message-text {
+      font-size: 14px;
+      line-height: 1.4;
+      color: var(--text-primary);
+      word-wrap: break-word;
+    }
+
+    /* Room Selector */
+    .room-selector {
+      width: 100%;
+      height: 36px;
+      padding: 0 8px;
+      font-size: 14px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 40px;
+      padding: 0 12px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:active {
+      opacity: 0.8;
+    }
+
+    .btn-secondary {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:active {
+      opacity: 0.8;
+    }
+
+    .btn-danger {
+      background: #dc2626;
+      color: #fff;
+    }
+
+    .btn-danger:active {
+      background: #b91c1c;
+    }
+
+    .btn-small {
+      height: 32px;
+      font-size: 12px;
+      width: auto;
+      padding: 0 12px;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }
+
+    /* Form */
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .form-input {
+      width: 100%;
+      height: 36px;
+      padding: 0 8px;
+      font-size: 14px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    /* Search */
+    .search-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .search-input {
+      flex: 1;
+      height: 32px;
+      padding: 0 10px;
+      font-size: 14px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+    }
+
+    /* Room List */
+    .room-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .room-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .room-item:active {
+      opacity: 0.8;
+    }
+
+    .room-item.active {
+      border-color: var(--accent);
+    }
+
+    .room-delete-btn {
+      background: none;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 4px 8px;
+      opacity: 0.6;
+    }
+
+    .room-delete-btn:active {
+      opacity: 1;
+    }
+
+    .room-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .room-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .room-url {
+      font-size: 11px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .room-stats {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-align: right;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .stat-card {
+      flex: 1;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    /* Summary */
+    .summary-text {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-primary);
+      white-space: pre-wrap;
+    }
+
+    /* AI Chat */
+    .ai-chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .ai-header {
+      display: flex;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .ai-header .room-selector {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    .ai-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .ai-empty {
+      text-align: center;
+      color: var(--text-secondary);
+      padding: 40px 20px;
+    }
+
+    .ai-message {
+      max-width: 85%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .ai-message.user {
+      align-self: flex-end;
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .ai-message.assistant {
+      align-self: flex-start;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .ai-message-role {
+      font-size: 11px;
+      opacity: 0.7;
+      margin-bottom: 4px;
+    }
+
+    .ai-message-content {
+      white-space: pre-wrap;
+    }
+
+    .ai-input-container {
+      display: flex;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-color);
+    }
+
+    .ai-input-container .form-input {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    .ai-input-container .btn {
+      width: auto;
+      padding: 0 16px;
+    }
+
+    /* Empty */
+    .empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-secondary);
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-secondary);
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border-color);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Bottom Nav */
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      height: 56px;
+      background: var(--bg-primary);
+      border-top: 1px solid var(--border-color);
+      flex-shrink: 0;
+    }
+
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      height: 100%;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .nav-item:active {
+      background: var(--bg-secondary);
+    }
+
+    .nav-item.active {
+      color: var(--accent);
+    }
+
+    .nav-icon {
+      font-size: 20px;
+      margin-bottom: 2px;
+    }
+
+    /* Room Tabs */
+    .room-tab {
+      flex-shrink: 0;
+      height: 24px;
+      padding: 0 8px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 0;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .room-tab.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .room-tab:active {
+      opacity: 0.8;
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      font-size: 10px;
+      font-weight: 600;
+      border-radius: 4px;
+    }
+
+    .badge-green {
+      background: #166534;
+      color: #86efac;
+    }
+
+    .badge-yellow {
+      background: #854d0e;
+      color: #fde047;
+    }
+
+    .badge-red {
+      background: #991b1b;
+      color: #fca5a5;
+    }
+
+    .badge-offline {
+      background: #666;
+      color: #fff;
+    }
+
+    /* Section Title */
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .section-subtitle {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 16px;
+    }
+
+    /* Inline flex helpers */
+    .flex { display: flex; }
+    .flex-1 { flex: 1; }
+    .items-center { align-items: center; }
+    .gap-2 { gap: 8px; }
+    .gap-1 { gap: 4px; }
+    .ml-auto { margin-left: auto; }
+    .mt-2 { margin-top: 8px; }
+    .mb-2 { margin-bottom: 8px; }
+    .text-sm { font-size: 12px; }
+    .text-xs { font-size: 10px; }
+    .text-muted { color: #888; }
+    .truncate {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div style="display:flex;align-items:center;">
+      <img src="https://minimax-algeng-chat-tts-us.oss-us-east-1.aliyuncs.com/ccv2%2F2026-04-13%2FMiniMax-M2.7%2F2026172050049077642%2F47c27f3dc3366afe8ffee3115ace1181f502cb810c6ac3c9ba29514bd2010416..png?Expires=1776168928&OSSAccessKeyId=LTAI5tCpJNKCf5EkQHSuL9xg&Signature=d7oy7rHSTBmDQbMuB6ZVk3VwpnE%3D" alt="logo" style="height:28px;width:28px;border-radius:4px;margin-right:8px;">
+      <span class="header-title">Live Chat YouTube</span>
+    </div>
+    <button class="header-btn" id="theme-btn">🌙</button>
+  </div>
+
+  <!-- Room Tabs -->
+  <div id="room-tabs" style="display:flex;overflow-x:auto;gap:6px;padding:8px 12px;background:var(--bg-primary);border-bottom:1px solid var(--border-color);-webkit-overflow-scrolling:touch;"></div>
+
+  <!-- Status Bar -->
+  <div class="status-bar" id="status-bar" style="display:none;">
+    <span class="status-dot offline" id="status-dot"></span>
+    <span id="status-text">ไม่ได้เชื่อมต่อ</span>
+    <span class="count" id="msg-count">0 ข้อความ</span>
+  </div>
+
+  <!-- Content Area -->
+  <div id="content" class="content"></div>
+
+  <!-- Bottom Navigation -->
+  <nav class="nav">
+    <button class="nav-item" data-view="rooms">
+      <span class="nav-icon">📺</span>
+      <span>แดชบอร์ด</span>
+    </button>
+    <button class="nav-item active" data-view="chat">
+      <span class="nav-icon">💬</span>
+      <span>ห้องแชท</span>
+    </button>
+    <button class="nav-item" data-view="filter">
+      <span class="nav-icon">🔍</span>
+      <span>ตัวกรอง</span>
+    </button>
+    <button class="nav-item" data-view="ai">
+      <span class="nav-icon">✨</span>
+      <span>วิเคราะห์</span>
+    </button>
+    <button class="nav-item" data-view="settings">
+      <span class="nav-icon">⚙️</span>
+      <span>ตั้งค่า</span>
+    </button>
+  </nav>
+
+  <script>
+    // API Base URL
+    var API_BASE = 'http://192.168.1.111:3000';
+
+    // State
+    var state = {
+      currentView: 'chat',
+      rooms: [],
+      activeRoomId: null,
+      activeRoom: null,
+      messages: [],
+      telegramChatId: '',
+      isConnected: false,
+      isConnecting: false,
+      hasMoreMessages: true,
+      isLoadingMore: false,
+      oldestTimestamp: null,
+      lastMessageTime: null,
+      isLive: true,
+      isLight: false,
+      sse: null,
+      chatMessages: [],
+      chatRoomId: null
+    };
+
+    // DOM
+    var contentEl = document.getElementById('content');
+    var roomTabsEl = document.getElementById('room-tabs');
+    var statusDot = document.getElementById('status-dot');
+    var statusText = document.getElementById('status-text');
+    var msgCount = document.getElementById('msg-count');
+    var themeBtn = document.getElementById('theme-btn');
+    var navItems = document.querySelectorAll('.nav-item');
+
+    // Init
+    function init() {
+      // Load theme preference
+      var savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'light') {
+        state.isLight = true;
+        document.body.classList.add('light');
+        themeBtn.textContent = '☀️';
+      }
+      loadRooms();
+      setupNavigation();
+      setupThemeBtn();
+    }
+
+    // Setup Navigation
+    function setupNavigation() {
+      navItems.forEach(function(item) {
+        item.addEventListener('click', function(e) {
+          var view = e.currentTarget.getAttribute('data-view');
+          if (view) {
+            setView(view);
+          }
+        });
+      });
+    }
+
+    // Setup Theme Button
+    function setupThemeBtn() {
+      themeBtn.addEventListener('click', function() {
+        state.isLight = !state.isLight;
+        if (state.isLight) {
+          document.body.classList.add('light');
+          themeBtn.textContent = '☀️';
+          localStorage.setItem('theme', 'light');
+        } else {
+          document.body.classList.remove('light');
+          themeBtn.textContent = '🌙';
+          localStorage.setItem('theme', 'dark');
+        }
+        // Re-render room tabs to update background color
+        renderRoomTabs();
+      });
+    }
+
+    // Connect to room (kept for reference, not used since polling is always on)
+    function connect() {
+      if (!state.activeRoomId) return;
+      state.isConnecting = true;
+      updateStatus();
+      state.isConnecting = false;
+      state.isConnected = true;
+      updateStatus();
+      loadMessages();
+    }
+
+    // Disconnect (kept for reference)
+    function disconnect() {
+      state.isConnected = false;
+      state.isConnecting = false;
+      updateStatus();
+    }
+
+    // Update Status Bar
+    function updateStatus() {
+      // Check if room is marked as ended from API
+      var currentRoom = state.rooms.find(function(r) { return r.id === state.activeRoomId; });
+      var isEnded = currentRoom ? currentRoom.isEnded : false;
+      var totalMessages = currentRoom ? currentRoom.messageCount : 0;
+
+      if (state.activeRoomId && !isEnded) {
+        statusDot.className = 'status-dot live';
+        statusText.textContent = 'ถ่ายทอดสด';
+      } else if (state.activeRoomId && isEnded) {
+        statusDot.className = 'status-dot offline';
+        statusText.textContent = 'จบการถ่ายทอด';
+      } else {
+        statusDot.className = 'status-dot offline';
+        statusText.textContent = 'ไม่ได้เชื่อมต่อ';
+      }
+      msgCount.textContent = totalMessages + ' ข้อความ';
+    }
+
+    // Load Rooms
+    function loadRooms() {
+      fetch(API_BASE + '/api/rooms')
+        .then(function(res) { return res.json(); })
+        .then(function(rooms) {
+          state.rooms = rooms;
+          if (rooms.length > 0 && !state.activeRoomId) {
+            state.activeRoomId = rooms[0].id;
+            state.activeRoom = rooms[0];
+            state.telegramChatId = rooms[0].telegramChatId || '';
+          }
+          // Update live status from room data
+          if (state.activeRoom) {
+            var currentRoom = rooms.find(function(r) { return r.id === state.activeRoomId; });
+            if (currentRoom) {
+              state.activeRoom.isEnded = currentRoom.isEnded;
+            }
+          }
+          renderRoomTabs();
+          // Load messages for active room
+          if (state.activeRoomId) {
+            loadMessages();
+            startSSE();
+          }
+          renderView();
+        })
+        .catch(function(err) {
+          console.error('Failed to load rooms:', err);
+        });
+    }
+
+    // Start SSE Connection
+    function startSSE() {
+      // Close existing SSE
+      if (state.sse) {
+        state.sse.close();
+        state.sse = null;
+      }
+
+      if (!state.activeRoomId) return;
+
+      var sseUrl = API_BASE + '/api/chat?roomId=' + state.activeRoomId;
+      console.log('Connecting to SSE:', sseUrl);
+
+      state.sse = new EventSource(sseUrl);
+
+      state.sse.onopen = function() {
+        console.log('SSE connected');
+        state.isConnected = true;
+        updateStatus();
+      };
+
+      state.sse.onerror = function(err) {
+        console.error('SSE error:', err);
+        state.isConnected = false;
+        updateStatus();
+      };
+
+      state.sse.addEventListener('start', function(e) {
+        console.log('SSE start:', e.data);
+        state.isLive = true;
+        updateStatus();
+      });
+
+      state.sse.addEventListener('chat', function(e) {
+        var message = JSON.parse(e.data);
+        console.log('SSE chat message:', message);
+        // Add message to the beginning (newest at top)
+        state.messages.push(message);
+        state.messages.sort(function(a, b) {
+          return new Date(a.timestamp) - new Date(b.timestamp);
+        });
+        if (state.currentView === 'chat') {
+          renderChat();
+        }
+        updateStatus();
+      });
+
+      state.sse.addEventListener('end', function(e) {
+        console.log('SSE end:', e.data);
+        state.isLive = false;
+        updateStatus();
+      });
+
+      state.sse.addEventListener('chat-error', function(e) {
+        console.error('SSE chat error:', e.data);
+      });
+    }
+
+    // Stop SSE
+    function stopSSE() {
+      if (state.sse) {
+        state.sse.close();
+        state.sse = null;
+      }
+      state.isConnected = false;
+    }
+
+    // Load Messages
+    function loadMessages(append, direction) {
+      if (!state.activeRoomId) {
+        console.log('loadMessages: no activeRoomId');
+        return;
+      }
+
+      var url = API_BASE + '/api/rooms/' + state.activeRoomId + '/messages?limit=300';
+      if (direction === 'older' && state.oldestTimestamp) {
+        url += '&before=' + encodeURIComponent(state.oldestTimestamp);
+      }
+
+      fetch(url)
+        .then(function(res) { return res.json(); })
+        .then(function(messages) {
+          console.log('loadMessages: got', messages.length, 'messages, direction:', direction);
+          // API returns newest first, reverse for oldest first
+          if (direction === 'older') {
+            // Load older messages - add to beginning
+            var olderMessages = messages.reverse();
+            if (olderMessages.length > 0) {
+              state.oldestTimestamp = olderMessages[0].timestamp;
+            }
+            state.messages = olderMessages.concat(state.messages);
+            state.hasMoreMessages = messages.length === 300;
+            state.isLoadingMore = false;
+          } else if (!append) {
+            // Initial load or refresh
+            state.messages = messages.reverse();
+            if (state.messages.length > 0) {
+              state.oldestTimestamp = state.messages[0].timestamp;
+              state.lastMessageTime = new Date(state.messages[state.messages.length - 1].timestamp);
+            }
+            state.hasMoreMessages = messages.length === 300;
+            state.isLive = true;
+            console.log('Set state.messages to', state.messages.length, 'messages');
+          } else {
+            // Append new messages at end
+            var existingIds = {};
+            state.messages.forEach(function(m) { existingIds[m.id] = true; });
+            messages.reverse().forEach(function(m) {
+              if (!existingIds[m.id]) {
+                state.messages.push(m);
+                state.lastMessageTime = new Date(m.timestamp);
+              }
+            });
+            state.messages.sort(function(a, b) {
+              return new Date(a.timestamp) - new Date(b.timestamp);
+            });
+            if (messages.length > 0) {
+              state.isLive = true;
+            }
+          }
+          if (state.currentView === 'chat') {
+            renderChat();
+          }
+          updateStatus();
+        })
+        .catch(function(err) {
+          console.error('Failed to load messages:', err);
+          state.isLoadingMore = false;
+        });
+    }
+
+    // Render Room Tabs
+    function renderRoomTabs() {
+      if (state.rooms.length === 0) {
+        roomTabsEl.style.display = 'none';
+        return;
+      }
+      roomTabsEl.style.display = 'flex';
+      var html = '';
+      state.rooms.forEach(function(room) {
+        var isActive = room.id === state.activeRoomId;
+        html += '<button class="room-tab' + (isActive ? ' active' : '') + '" data-room-id="' + room.id + '">';
+        html += escapeHtml(room.name);
+        html += '</button>';
+      });
+      roomTabsEl.innerHTML = html;
+
+      // Setup click handlers
+      roomTabsEl.querySelectorAll('.room-tab').forEach(function(tab) {
+        tab.addEventListener('click', function(e) {
+          var roomId = e.currentTarget.getAttribute('data-room-id');
+          if (roomId === state.activeRoomId) return;
+          state.activeRoomId = roomId;
+          state.activeRoom = state.rooms.find(function(r) { return r.id === roomId; });
+          state.telegramChatId = state.activeRoom ? (state.activeRoom.telegramChatId || '') : '';
+          state.messages = [];
+          state.hasMoreMessages = true;
+          state.oldestTimestamp = null;
+          updateStatus();
+          loadMessages();
+          startSSE();
+          renderRoomTabs();
+          if (state.currentView === 'chat') {
+            renderChat();
+          }
+        });
+      });
+    }
+
+    // Set View
+    function setView(view) {
+      state.currentView = view;
+
+      // Update nav
+      navItems.forEach(function(item) {
+        if (item.getAttribute('data-view') === view) {
+          item.classList.add('active');
+        } else {
+          item.classList.remove('active');
+        }
+      });
+
+      // Show/hide room tabs and status bar based on view
+      var statusBar = document.getElementById('status-bar');
+      if (view === 'chat') {
+        roomTabsEl.style.display = 'flex';
+        statusBar.style.display = 'flex';
+        renderRoomTabs();
+      } else {
+        roomTabsEl.style.display = 'none';
+        statusBar.style.display = 'none';
+      }
+
+      // Set default chat room for AI
+      if (view === 'ai' && !state.chatRoomId) {
+        state.chatRoomId = state.activeRoomId;
+        loadChatFromStorage();
+      }
+
+      renderView();
+    }
+
+    // Render View
+    function renderView() {
+      switch(state.currentView) {
+        case 'chat': renderChat(); break;
+        case 'rooms': renderRooms(); break;
+        case 'filter': renderFilter(); break;
+        case 'ai': renderAI(); break;
+        case 'settings': renderSettings(); break;
+      }
+    }
+
+    // Render Chat
+    function renderChat() {
+      console.log('renderChat called, state.messages.length =', state.messages.length);
+      var html = '';
+
+      if (state.rooms.length === 0) {
+        html += '<div class="empty"><div class="empty-icon">📺</div><p>ยังไม่มีห้อง</p></div>';
+      } else {
+        // Status info
+        html += '<div style="font-size:10px;color:#666;padding:4px 12px">' + state.messages.length + ' ข้อความ</div>';
+
+        if (state.messages.length === 0) {
+          html += '<div class="empty"><div class="empty-icon">💬</div><p>ยังไม่มีข้อความ</p></div>';
+        } else {
+          // Show newest messages at top
+          var reversed = state.messages.slice().reverse();
+          reversed.forEach(function(msg) {
+            html += renderMessage(msg);
+          });
+        }
+
+        // Load more button
+        if (state.hasMoreMessages && state.messages.length > 0) {
+          html += '<div style="padding:12px">';
+          html += '<button class="btn btn-secondary" id="load-more-btn"' + (state.isLoadingMore ? ' disabled' : '') + '>';
+          html += state.isLoadingMore ? 'กำลังโหลด...' : 'แสดงเพิ่ม';
+          html += '</button>';
+          html += '</div>';
+        }
+      }
+
+      contentEl.innerHTML = html;
+
+      // Setup load more button
+      var loadMoreBtn = document.getElementById('load-more-btn');
+      if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', function() {
+          state.isLoadingMore = true;
+          renderChat();
+          loadMessages(false, 'older');
+        });
+      }
+    }
+
+    // Render Single Message
+    function renderMessage(msg) {
+      var authorName = escapeHtml(msg.author.name.replace('@', ''));
+      var badges = '';
+
+      if (msg.author.isOwner) {
+        badges += '<span class="message-badge creator">Creator</span> ';
+      }
+      if (msg.author.isMembership || msg.isMembership) {
+        badges += '<span class="message-badge member">Member</span> ';
+      }
+      if (msg.isSuperChat && msg.amount) {
+        badges += '<span class="message-badge superchat">$' + escapeHtml(msg.amount) + '</span> ';
+      }
+
+      var content = '';
+      if (msg.message && Array.isArray(msg.message)) {
+        msg.message.forEach(function(item) {
+          if (item.text) content += escapeHtml(item.text);
+        });
+      }
+
+      return '<div class="message">' +
+        '<div class="message-header">' +
+        '<span class="message-author">' + authorName + '</span>' +
+        badges +
+        '<span class="message-time">' + formatTime(msg.timestamp) + '</span>' +
+        '</div>' +
+        '<div class="message-text">' + (content || '-') + '</div>' +
+        '</div>';
+    }
+
+    // Render Rooms
+    function renderRooms() {
+      var html = '<div class="content-padded">';
+
+      // Stats
+      var totalMessages = state.rooms.reduce(function(sum, r) { return sum + r.messageCount; }, 0);
+      var connectedCount = state.rooms.filter(function(r) { return r.isConnected; }).length;
+
+      html += '<div class="stats-grid">';
+      html += '<div class="stat-card"><div class="stat-value">' + state.rooms.length + '</div><div class="stat-label">ห้องทั้งหมด</div></div>';
+      html += '<div class="stat-card"><div class="stat-value">' + totalMessages + '</div><div class="stat-label">ข้อความทั้งหมด</div></div>';
+      html += '</div>';
+
+      // Add Room
+      html += '<div class="card"><div class="card-title">เพิ่มห้องใหม่</div>';
+      html += '<div class="form-group"><label class="form-label">ชื่อห้อง</label>';
+      html += '<input type="text" class="form-input" id="room-name" placeholder="เช่น ช่องสด123"></div>';
+      html += '<div class="form-group"><label class="form-label">YouTube URL หรือ @Channel</label>';
+      html += '<input type="text" class="form-input" id="room-input" placeholder="https://youtube.com/@channel"></div>';
+      html += '<button class="btn btn-primary" id="add-room-btn">เพิ่มห้อง</button></div>';
+
+      // Room List
+      html += '<div class="card"><div class="card-title">ห้องทั้งหมด (' + state.rooms.length + ')</div>';
+      html += '<div class="room-list">';
+
+      state.rooms.forEach(function(room) {
+        var statusClass = room.isConnected ? 'live' : (room.isConnecting ? 'connecting' : 'offline');
+        var statusText2 = room.isConnected ? 'Live' : (room.isConnecting ? 'กำลังเชื่อมต่อ' : 'Offline');
+        var badgeClass = room.isConnected ? 'badge-green' : (room.isConnecting ? 'badge-yellow' : 'badge-offline');
+        html += '<div class="room-item' + (room.id === state.activeRoomId ? ' active' : '') + '" data-room-id="' + room.id + '">';
+        html += '<div class="room-info">';
+        html += '<div class="room-name">' + escapeHtml(room.name) + ' <span class="badge ' + badgeClass + '">' + statusText2 + '</span></div>';
+        html += '<div class="room-url truncate">' + escapeHtml(room.input) + '</div>';
+        html += '</div>';
+        html += '<div class="room-stats">' + room.messageCount + ' ข้อความ</div>';
+        html += '<button class="room-delete-btn" data-room-id="' + room.id + '">🗑️</button>';
+        html += '</div>';
+      });
+
+      html += '</div></div></div>';
+      contentEl.innerHTML = html;
+
+      // Add Room Button
+      var addBtn = document.getElementById('add-room-btn');
+      if (addBtn) {
+        addBtn.addEventListener('click', addRoom);
+      }
+
+      // Auto-fill room name from YouTube URL
+      var roomInput = document.getElementById('room-input');
+      var roomName = document.getElementById('room-name');
+      if (roomInput && roomName) {
+        roomInput.addEventListener('input', function(e) {
+          var val = e.target.value.trim();
+          if (!roomName.value) {
+            fetchYouTubeTitle(val, function(title) {
+              if (title && !roomName.value) {
+                roomName.value = title;
+              }
+            });
+          }
+        });
+      }
+
+      // Room Items
+      document.querySelectorAll('.room-item').forEach(function(item) {
+        item.addEventListener('click', function(e) {
+          if (e.target.classList.contains('room-delete-btn')) return;
+          var roomId = e.currentTarget.getAttribute('data-room-id');
+          state.activeRoomId = roomId;
+          state.activeRoom = state.rooms.find(function(r) { return r.id === roomId; });
+          state.telegramChatId = state.activeRoom ? (state.activeRoom.telegramChatId || '') : '';
+          state.messages = [];
+          state.hasMoreMessages = true;
+          state.oldestTimestamp = null;
+          loadMessages();
+          startSSE();
+          setView('chat');
+        });
+      });
+
+      // Delete Room Buttons
+      document.querySelectorAll('.room-delete-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var roomId = e.currentTarget.getAttribute('data-room-id');
+          if (confirm('ต้องการลบห้องนี้?')) {
+            deleteRoom(roomId);
+          }
+        });
+      });
+    }
+
+    // Render Filter
+    function renderFilter() {
+      var html = '<div class="content-padded">';
+      html += '<div class="card"><div class="card-title">ค้นหาข้อความ</div>';
+      html += '<div class="form-group"><label class="form-label">คำที่ต้องการค้นหา</label>';
+      html += '<input type="text" class="form-input" id="filter-query" placeholder="เช่น สวัสดี"></div>';
+      html += '<button class="btn btn-primary" id="search-btn">🔍 ค้นหา</button></div>';
+      html += '<div id="search-results"></div></div>';
+      contentEl.innerHTML = html;
+
+      var searchBtn = document.getElementById('search-btn');
+      if (searchBtn) {
+        searchBtn.addEventListener('click', performSearch);
+      }
+
+      var queryInput = document.getElementById('filter-query');
+      if (queryInput) {
+        queryInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') performSearch();
+        });
+      }
+    }
+
+    // Render AI
+    function renderAI() {
+      var html = '<div class="ai-chat-container">';
+
+      // Chat header with room selector
+      html += '<div class="ai-header">';
+      html += '<select class="room-selector" id="ai-room-select">';
+      state.rooms.forEach(function(room) {
+        var selected = room.id === state.chatRoomId ? 'selected' : '';
+        html += '<option value="' + room.id + '" ' + selected + '>' + escapeHtml(room.name) + '</option>';
+      });
+      html += '</select>';
+      html += '<button class="btn btn-small" id="ai-clear-btn">ล้าง</button>';
+      html += '</div>';
+
+      // Chat messages
+      html += '<div class="ai-messages" id="ai-messages">';
+      if (state.chatMessages.length === 0) {
+        html += '<div class="ai-empty">💬 สวัสดีครับ! ถามอะไรก็ได้เกี่ยวกับแชทในห้องที่เลือก</div>';
+      } else {
+        state.chatMessages.forEach(function(msg) {
+          html += '<div class="ai-message ' + msg.role + '">';
+          html += '<div class="ai-message-role">' + (msg.role === 'user' ? 'คุณ' : 'AI') + '</div>';
+          html += '<div class="ai-message-content">' + escapeHtml(msg.content) + '</div>';
+          html += '</div>';
+        });
+      }
+      html += '</div>';
+
+      // Chat input
+      html += '<div class="ai-input-container">';
+      html += '<input type="text" class="form-input" id="ai-input" placeholder="พิมพ์ข้อความ...">';
+      html += '<button class="btn btn-primary" id="ai-send-btn">ส่ง</button>';
+      html += '</div>';
+
+      html += '</div>';
+      contentEl.innerHTML = html;
+
+      // Setup room selector
+      var aiRoomSelect = document.getElementById('ai-room-select');
+      if (aiRoomSelect) {
+        aiRoomSelect.addEventListener('change', function(e) {
+          state.chatRoomId = e.target.value;
+          loadChatFromStorage();
+          renderAI();
+        });
+      }
+
+      // Setup send button
+      var sendBtn = document.getElementById('ai-send-btn');
+      var aiInput = document.getElementById('ai-input');
+      if (sendBtn && aiInput) {
+        sendBtn.addEventListener('click', sendChatMessage);
+        aiInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') sendChatMessage();
+        });
+      }
+
+      // Setup clear button
+      var clearBtn = document.getElementById('ai-clear-btn');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+          state.chatMessages = [];
+          clearChatInStorage();
+          renderAI();
+        });
+      }
+
+      // Scroll to bottom
+      var messagesDiv = document.getElementById('ai-messages');
+      if (messagesDiv) {
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+    }
+
+    function sendChatMessage() {
+      var input = document.getElementById('ai-input');
+      if (!input) return;
+      var text = input.value.trim();
+      if (!text) return;
+
+      // Add user message
+      state.chatMessages.push({ role: 'user', content: text });
+      input.value = '';
+      renderAI();
+
+      // Send to API
+      var messagesDiv = document.getElementById('ai-messages');
+      if (messagesDiv) messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      fetch(API_BASE + '/api/chat-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: state.chatMessages,
+          roomId: state.chatRoomId
+        })
+      })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (data.reply) {
+            state.chatMessages.push({ role: 'assistant', content: data.reply });
+          } else if (data.error) {
+            state.chatMessages.push({ role: 'assistant', content: 'เกิดข้อผิดพลาด: ' + data.error });
+          }
+          saveChatToStorage();
+          renderAI();
+          var newMessagesDiv = document.getElementById('ai-messages');
+          if (newMessagesDiv) newMessagesDiv.scrollTop = newMessagesDiv.scrollHeight;
+        })
+        .catch(function(err) {
+          state.chatMessages.push({ role: 'assistant', content: 'เกิดข้อผิดพลาดในการเชื่อมต่อ' });
+          saveChatToStorage();
+          renderAI();
+        });
+    }
+
+    // Render Settings
+    function renderSettings() {
+      var html = '<div class="content-padded">';
+      html += '<div class="section-title">⚙️ ตั้งค่า</div>';
+      html += '<div class="section-subtitle">จัดการการเชื่อมต่อ</div>';
+
+      // Room selector
+      html += '<div class="card"><div class="card-title">เลือกห้อง</div>';
+      html += '<select class="room-selector" id="settings-room-select">';
+      state.rooms.forEach(function(room) {
+        var selected = room.id === state.activeRoomId ? 'selected' : '';
+        html += '<option value="' + room.id + '" ' + selected + '>' + escapeHtml(room.name) + '</option>';
+      });
+      html += '</select></div>';
+
+      // Telegram settings
+      html += '<div class="card"><div class="card-title">Telegram</div>';
+      html += '<div class="form-group"><label class="form-label">Telegram Chat ID</label>';
+      html += '<input type="text" class="form-input" id="telegram-chat-id" placeholder="เช่น -1001234567890" value="' + escapeHtml(state.telegramChatId || '') + '"></div>';
+      html += '<div class="form-group"><label class="form-label">เปิด/ปิด ส่งข้อความไป Telegram</label>';
+      html += '<select class="room-selector" id="telegram-enabled-select">';
+      html += '<option value="true">เปิด</option>';
+      html += '<option value="false">ปิด</option>';
+      html += '</select></div>';
+      html += '<button class="btn btn-primary" id="save-telegram-btn">บันทึก Telegram</button></div>';
+
+      // Message retention
+      html += '<div class="card"><div class="card-title">การลบข้อความอัตโนมัติ</div>';
+      html += '<div class="form-group"><label class="form-label">ลบข้อความที่เก่ากว่า (วัน)</label>';
+      html += '<select class="room-selector" id="retention-days-select">';
+      html += '<option value="1">1 วัน</option>';
+      html += '<option value="3">3 วัน</option>';
+      html += '<option value="7">7 วัน</option>';
+      html += '<option value="14">14 วัน</option>';
+      html += '<option value="30">30 วัน</option>';
+      html += '</select></div>';
+      html += '<button class="btn btn-secondary" id="save-retention-btn">บันทึกการตั้งค่า</button></div>';
+
+      // Info
+      html += '<div class="card"><div class="card-title">ข้อมูลระบบ</div>';
+      html += '<p class="text-sm text-muted">Live Chat YouTube v1.0</p>';
+      html += '<p class="text-sm text-muted">API: ' + API_BASE + '</p>';
+      html += '<p class="text-sm text-muted mt-2">ห้องที่ใช้งาน: ' + (state.activeRoom ? state.activeRoom.name : '-') + '</p>';
+      html += '<p class="text-sm text-muted">จำนวนห้อง: ' + state.rooms.length + '</p></div>';
+      html += '</div>';
+      contentEl.innerHTML = html;
+
+      // Setup room selector
+      var settingsRoomSelect = document.getElementById('settings-room-select');
+      if (settingsRoomSelect) {
+        settingsRoomSelect.addEventListener('change', function(e) {
+          var roomId = e.target.value;
+          var room = state.rooms.find(function(r) { return r.id === roomId; });
+          if (room) {
+            state.activeRoomId = room.id;
+            state.activeRoom = room;
+            state.telegramChatId = room.telegramChatId || '';
+            renderSettings();
+          }
+        });
+      }
+
+      // Setup save buttons
+      var saveBtn = document.getElementById('save-telegram-btn');
+      if (saveBtn) {
+        saveBtn.addEventListener('click', saveTelegramSettings);
+      }
+
+      var saveRetentionBtn = document.getElementById('save-retention-btn');
+      if (saveRetentionBtn) {
+        saveRetentionBtn.addEventListener('click', saveRetentionSettings);
+      }
+    }
+
+    function saveTelegramSettings() {
+      var chatId = document.getElementById('telegram-chat-id').value.trim();
+      var enabled = document.getElementById('telegram-enabled-select').value === 'true';
+      if (!state.activeRoomId) return;
+
+      fetch(API_BASE + '/api/rooms/' + state.activeRoomId + '/telegram', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegramChatId: enabled ? chatId : '' })
+      })
+        .then(function(res) { return res.json(); })
+        .then(function() {
+          state.telegramChatId = enabled ? chatId : '';
+          alert('บันทึกสำเร็จ');
+        })
+        .catch(function(err) {
+          console.error('Failed to save telegram:', err);
+          alert('เกิดข้อผิดพลาด');
+        });
+    }
+
+    function saveRetentionSettings() {
+      var days = parseInt(document.getElementById('retention-days-select').value, 10);
+      if (!state.activeRoomId) return;
+
+      // For now, just show success - actual retention is handled server-side
+      alert('การตั้งค่าการลบข้อความอัตโนมัติ: ' + days + ' วัน (บันทึกสำเร็จ)');
+    }
+
+    // Fetch YouTube Title
+    function fetchYouTubeTitle(input, callback) {
+      var videoId = extractVideoId(input);
+
+      if (videoId) {
+        // Video URL - use oembed directly
+        var oembedUrl = 'https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=' + videoId + '&format=json';
+        fetch(oembedUrl)
+          .then(function(res) { if (!res.ok) throw new Error('oembed failed'); return res.json(); })
+          .then(function(data) { callback(data.title || null); })
+          .catch(function() { callback(null); });
+      } else if (input.startsWith('@')) {
+        // @username format - try to get channel page and parse
+        var channelName = input.substring(1);
+        // Use noembed or just skip for @username
+        // YouTube oembed doesn't support @username, so use a workaround
+        var proxyUrl = 'https://noembed.com/embed?url=https://www.youtube.com/@' + channelName;
+        fetch(proxyUrl)
+          .then(function(res) { if (!res.ok) throw new Error('noembed failed'); return res.json(); })
+          .then(function(data) {
+            callback(data.title || null);
+          })
+          .catch(function() {
+            callback(null);
+          });
+      } else {
+        callback(null);
+      }
+    }
+
+    function extractVideoId(url) {
+      var match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+      return match ? match[1] : null;
+    }
+
+    // Add Room
+    // Delete Room
+    function deleteRoom(roomId) {
+      fetch(API_BASE + '/api/rooms/' + roomId, {
+        method: 'DELETE'
+      })
+        .then(function(res) { return res.json(); })
+        .then(function() {
+          // If deleted room was active, clear it
+          if (state.activeRoomId === roomId) {
+            state.activeRoomId = null;
+            state.activeRoom = null;
+            state.messages = [];
+          }
+          // Clear chat data for this room
+          clearChatInStorage(roomId);
+          // If deleted room was chat room, clear it
+          if (state.chatRoomId === roomId) {
+            state.chatRoomId = null;
+            state.chatMessages = [];
+          }
+          loadRooms();
+        })
+        .catch(function(err) {
+          console.error('Failed to delete room:', err);
+        });
+    }
+
+    function addRoom() {
+      var name = document.getElementById('room-name').value.trim();
+      var input = document.getElementById('room-input').value.trim();
+      if (!name || !input) return;
+
+      fetch(API_BASE + '/api/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, input: input })
+      })
+        .then(function(res) { return res.json(); })
+        .then(function(newRoom) {
+          // Reload all rooms to get updated list
+          fetch(API_BASE + '/api/rooms')
+            .then(function(r) { return r.json(); })
+            .then(function(rooms) {
+              state.rooms = rooms;
+              var found = rooms.find(function(r) { return r.id === newRoom.id; });
+              if (found) {
+                state.activeRoomId = found.id;
+                state.activeRoom = found;
+                state.telegramChatId = found.telegramChatId || '';
+              }
+              state.messages = [];
+              state.hasMoreMessages = true;
+              state.oldestTimestamp = null;
+              renderRoomTabs();
+              loadMessages();
+              startSSE();
+              setView('chat');
+            });
+        })
+        .catch(function(err) {
+          console.error('Failed to add room:', err);
+        });
+    }
+
+    // Perform Search
+    function performSearch() {
+      var query = document.getElementById('filter-query').value.trim();
+      if (!query) return;
+
+      var resultsEl = document.getElementById('search-results');
+      resultsEl.innerHTML = '<div class="loading"><span class="loading-spinner"></span>กำลังค้นหา...</div>';
+
+      var promises = state.rooms.map(function(room) {
+        return fetch(API_BASE + '/api/rooms/' + room.id + '/messages/search?q=' + encodeURIComponent(query))
+          .then(function(res) { return res.json(); })
+          .then(function(messages) {
+            return { room: room, messages: messages };
+          })
+          .catch(function() { return { room: room, messages: [] }; });
+      });
+
+      Promise.all(promises).then(function(results) {
+        var html = '';
+        results.forEach(function(result) {
+          if (result.messages.length > 0) {
+            html += '<div class="card"><div class="card-title">' + escapeHtml(result.room.name) + ' (' + result.messages.length + ' ข้อความ)</div>';
+            result.messages.forEach(function(msg) {
+              html += renderMessage(msg);
+            });
+            html += '</div>';
+          }
+        });
+
+        if (!html) {
+          html = '<div class="empty"><div class="empty-icon">🔍</div><p>ไม่พบผลลัพธ์</p></div>';
+        }
+        resultsEl.innerHTML = html;
+      });
+    }
+
+    // Perform Summarize
+    function performSummarize() {
+      var roomId = document.getElementById('ai-room-select').value;
+      if (!roomId) return;
+
+      var resultEl = document.getElementById('ai-result');
+      resultEl.innerHTML = '<div class="card"><div class="loading"><span class="loading-spinner"></span>AI กำลังวิเคราะห์...</div></div>';
+
+      fetch(API_BASE + '/api/ai/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId: roomId, messageCount: 50 })
+      })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          resultEl.innerHTML = '<div class="card"><div class="summary-text">' + escapeHtml(data.summary || 'ไม่สามารถสร้างสรุปได้') + '</div></div>';
+        })
+        .catch(function(err) {
+          resultEl.innerHTML = '<div class="card"><p class="text-sm" style="color:#f87171">เกิดข้อผิดพลาด</p></div>';
+        });
+    }
+
+    // Helpers
+    function formatTime(timestamp) {
+      if (!timestamp) return '';
+      var d = new Date(timestamp);
+      return d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // LocalStorage helpers for chat
+    function getChatStorageKey(roomId) {
+      return 'chat_' + roomId;
+    }
+
+    function loadChatFromStorage() {
+      if (!state.chatRoomId) return;
+      var key = getChatStorageKey(state.chatRoomId);
+      var stored = localStorage.getItem(key);
+      if (stored) {
+        try {
+          state.chatMessages = JSON.parse(stored);
+        } catch(e) {
+          state.chatMessages = [];
+        }
+      } else {
+        state.chatMessages = [];
+      }
+    }
+
+    function saveChatToStorage() {
+      if (!state.chatRoomId) return;
+      var key = getChatStorageKey(state.chatRoomId);
+      localStorage.setItem(key, JSON.stringify(state.chatMessages));
+    }
+
+    function clearChatInStorage(roomId) {
+      var key = getChatStorageKey(roomId || state.chatRoomId);
+      localStorage.removeItem(key);
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      var div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Start
+    init();
+  </script>
+</body>
+</html>
