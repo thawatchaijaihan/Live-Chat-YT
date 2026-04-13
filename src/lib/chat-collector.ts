@@ -172,7 +172,9 @@ async function startCollector(collector: ChatCollector, source: YoutubeId) {
       if (!isNewMessage) return;
 
       const latestRoom = db.getRoom(collector.roomId);
+      console.log("[Telegram Debug] room:", latestRoom?.id, "telegramChatId:", latestRoom?.telegramChatId, "botToken:", TELEGRAM_BOT_TOKEN ? "SET" : "NOT_SET");
       if (latestRoom?.telegramChatId && TELEGRAM_BOT_TOKEN) {
+        console.log("[Telegram] Sending message:", message.author.name);
         void sendToTelegram(TELEGRAM_BOT_TOKEN, latestRoom.telegramChatId, message);
       }
 
@@ -183,12 +185,14 @@ async function startCollector(collector: ChatCollector, source: YoutubeId) {
       if (collector.ignoreEndEvent) return;
 
       collector.status = "ended";
+      collector.ignoreEndEvent = true;
       db.updateRoom(collector.roomId, {
         isConnected: false,
         isConnecting: false,
         isEnded: true,
       });
       collector.emitter.emit("end", { reason });
+      collector.emitter.removeAllListeners();
       collectors.delete(collector.roomId);
     });
 

@@ -280,6 +280,10 @@ export function addMessage(roomId: string, message: YouTubeMessage): boolean {
   // Update room message count
   const count = database.prepare("SELECT COUNT(*) as cnt FROM messages WHERE roomId = ?").get(roomId) as CountRow;
   updateRoom(roomId, { messageCount: count.cnt });
+
+  // Auto-cleanup messages older than 3 days
+  cleanupOldMessages(roomId, 3);
+
   return result.changes > 0;
 }
 
@@ -287,6 +291,22 @@ export function clearMessages(roomId: string): void {
   const database = getDb();
   database.prepare("DELETE FROM messages WHERE roomId = ?").run(roomId);
   updateRoom(roomId, { messageCount: 0 });
+}
+
+export function cleanupOldMessages(roomId: string, maxAgeDays: number = 3): number {
+  const database = getDb();
+  const cutoff = new Date(Date.now() - maxAgeDays * 24 * 60 * 60 * 1000).toISOString();
+  const result = database.prepare(
+    "DELETE FROM messages WHERE roomId = ? AND timestamp < ?"
+  ).run(roomId, cutoff);
+
+  // Update message count after cleanup
+  if (result.changes > 0) {
+    const count = database.prepare("SELECT COUNT(*) as cnt FROM messages WHERE roomId = ?").get(roomId) as CountRow;
+    updateRoom(roomId, { messageCount: count.cnt });
+  }
+
+  return result.changes;
 }
 
 export function searchMessages(roomId: string, query: string, limit = 50): YouTubeMessage[] {

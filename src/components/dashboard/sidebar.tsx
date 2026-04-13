@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MessageSquare, LayoutDashboard, Settings, Filter, BarChart3 } from "lucide-react";
+import { MessageSquare, LayoutDashboard, Settings, Filter, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,7 +15,7 @@ const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", view: "dashboard" },
   { icon: MessageSquare, label: "Live Chat", view: "chat" },
   { icon: Filter, label: "Filter", view: "viewers" },
-  { icon: BarChart3, label: "Analytics", view: "analytics" },
+  { icon: Sparkles, label: "AI", view: "ai-summarizer" },
   { icon: Settings, label: "Settings", view: "settings" },
 ];
 

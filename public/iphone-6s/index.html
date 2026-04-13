@@ -714,7 +714,7 @@
 
   <script>
     // API Base URL
-    var API_BASE = 'http://192.168.1.111:3000';
+    var API_BASE = 'https://humourlessly-combative-pura.ngrok-free.dev';
 
     // State
     var state = {
@@ -830,9 +830,14 @@
 
     // Load Rooms
     function loadRooms() {
+      console.log('loadRooms called, API:', API_BASE + '/api/rooms');
       fetch(API_BASE + '/api/rooms')
-        .then(function(res) { return res.json(); })
+        .then(function(res) {
+          console.log('Response status:', res.status);
+          return res.json();
+        })
         .then(function(rooms) {
+          console.log('Rooms loaded:', rooms.length, rooms);
           state.rooms = rooms;
           if (rooms.length > 0 && !state.activeRoomId) {
             state.activeRoomId = rooms[0].id;
@@ -1422,9 +1427,10 @@
       // Info
       html += '<div class="card"><div class="card-title">ข้อมูลระบบ</div>';
       html += '<p class="text-sm text-muted">Live Chat YouTube v1.0</p>';
-      html += '<p class="text-sm text-muted">API: ' + API_BASE + '</p>';
-      html += '<p class="text-sm text-muted mt-2">ห้องที่ใช้งาน: ' + (state.activeRoom ? state.activeRoom.name : '-') + '</p>';
-      html += '<p class="text-sm text-muted">จำนวนห้อง: ' + state.rooms.length + '</p></div>';
+      html += '<p class="text-sm text-muted">API: ' + API_BASE + ' (current: "' + window.location.origin + '")</p>';
+      html += '<p class="text-sm text-muted">ห้องที่ใช้งาน: ' + (state.activeRoom ? state.activeRoom.name : '-') + '</p>';
+      html += '<p class="text-sm text-muted">จำนวนห้อง: ' + state.rooms.length + '</p>';
+      html += '<p class="text-sm text-muted">Rooms: ' + JSON.stringify(state.rooms.map(function(r){return {id:r.id,name:r.name};})) + '</p></div>';
       html += '</div>';
       contentEl.innerHTML = html;
 

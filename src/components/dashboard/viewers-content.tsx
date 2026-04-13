@@ -11,19 +11,25 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { Search, User, MessageSquare, Filter, X } from "lucide-react";
 
+interface FilterTopic {
+  id: string;
+  filterType: "user" | "text";
+  filterValue: string;
+  results: FilterResult[];
+}
+
 interface FilterResult {
   roomId: string;
   roomName: string;
   messages: YouTubeMessage[];
-  filterType: "user" | "text";
-  filterValue: string;
 }
 
 export function ViewersContent() {
   const { rooms, activeRoomId, setActiveRoom, searchMessages } = useChatRooms();
   const [filterType, setFilterType] = React.useState<"user" | "text">("user");
   const [filterInput, setFilterInput] = React.useState("");
-  const [filterResults, setFilterResults] = React.useState<FilterResult[]>([]);
+  const [filterTopics, setFilterTopics] = React.useState<FilterTopic[]>([]);
+  const [activeTopicId, setActiveTopicId] = React.useState<string | null>(null);
   const [isFiltering, setIsFiltering] = React.useState(false);
   const [selectedTabs, setSelectedTabs] = React.useState<Set<string>>(new Set());
 
@@ -37,23 +43,28 @@ export function ViewersContent() {
     if (!filterInput.trim()) return;
 
     setIsFiltering(true);
-    setFilterResults([]);
-    setSelectedTabs(new Set());
 
+    // Check if this topic already exists
+    const existingTopic = filterTopics.find(
+      (t) => t.filterType === filterType && t.filterValue.toLowerCase() === filterInput.trim().toLowerCase()
+    );
+    if (existingTopic) {
+      setActiveTopicId(existingTopic.id);
+      setIsFiltering(false);
+      return;
+    }
+
+    const topicId = Date.now().toString();
     const results: FilterResult[] = [];
 
     for (const room of rooms) {
       try {
-        const query = filterType === "user" ? filterInput.trim() : filterInput.trim();
-        const messages = await searchMessages(room.id, query);
-
+        const messages = await searchMessages(room.id, filterInput.trim());
         if (messages.length > 0) {
           results.push({
             roomId: room.id,
             roomName: room.name,
             messages,
-            filterType,
-            filterValue: filterInput,
           });
         }
       } catch (error) {
@@ -61,11 +72,17 @@ export function ViewersContent() {
       }
     }
 
-    setFilterResults(results);
-    // Auto-select first tab if available
-    if (results.length > 0) {
-      setSelectedTabs(new Set([results[0].roomId]));
-    }
+    const newTopic: FilterTopic = {
+      id: topicId,
+      filterType,
+      filterValue: filterInput.trim(),
+      results,
+    };
+
+    setFilterTopics((prev) => [...prev, newTopic]);
+    setActiveTopicId(topicId);
+    setSelectedTabs(new Set(results.map((r) => r.roomId)));
+    setFilterInput("");
     setIsFiltering(false);
   };
 
@@ -84,6 +101,19 @@ export function ViewersContent() {
     }
     setSelectedTabs(newTabs);
   };
+
+  const removeTopic = (topicId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFilterTopics((prev) => {
+      const newTopics = prev.filter((t) => t.id !== topicId);
+      if (activeTopicId === topicId) {
+        setActiveTopicId(newTopics.length > 0 ? newTopics[newTopics.length - 1].id : null);
+      }
+      return newTopics;
+    });
+  };
+
+  const activeTopic = filterTopics.find((t) => t.id === activeTopicId);
 
   const goToMessage = (roomId: string, messageId: string) => {
     setActiveRoom(roomId);
@@ -116,14 +146,15 @@ export function ViewersContent() {
   const highlightedMsgId = typeof window !== "undefined" ? sessionStorage.getItem("highlightMessageId") : null;
 
   // Filter messages to show based on selected tabs
-  const visibleResults = filterResults.filter((r) => selectedTabs.has(r.roomId));
+  const visibleResults = activeTopic?.results.filter((r) => selectedTabs.has(r.roomId)) || [];
   const totalMessages = visibleResults.reduce((sum, r) => sum + r.messages.length, 0);
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b shrink-0">
-        <h2 className="text-xl font-bold mb-4">Viewers</h2>
+        <h2 className="text-xl font-bold mb-4">Filter</h2>
+        <p className="text-muted-foreground text-sm">ค้นหาข้อความหรือผู้ใช้ในแชท</p>
 
         {/* Filter Input Section */}
         <div className="space-y-3">
@@ -185,7 +216,7 @@ export function ViewersContent() {
 
       {/* Results Section */}
       <div className="flex-1 overflow-y-auto">
-        {filterResults.length === 0 ? (
+        {filterTopics.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8 text-center">
             <Search className="h-16 w-16 mb-4 opacity-20" />
             <p className="text-lg font-medium mb-2">ยังไม่มีผลลัพธ์</p>
@@ -195,34 +226,72 @@ export function ViewersContent() {
           </div>
         ) : (
           <div className="p-4 space-y-4">
-            {/* Room Tabs */}
-            <div className="flex flex-wrap gap-2">
-              {filterResults.map((result) => (
+            {/* Filter Topic Tabs */}
+            <div className="flex flex-wrap gap-2 border-b pb-2">
+              {filterTopics.map((topic) => (
                 <button
-                  key={result.roomId}
-                  onClick={() => toggleTab(result.roomId)}
+                  key={topic.id}
+                  onClick={() => {
+                    setActiveTopicId(topic.id);
+                    setSelectedTabs(new Set(topic.results.map((r) => r.roomId)));
+                  }}
                   className={cn(
                     "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-colors",
-                    selectedTabs.has(result.roomId)
+                    activeTopicId === topic.id
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted hover:bg-muted/80"
                   )}
                 >
-                  {selectedTabs.has(result.roomId) ? (
-                    <X className="h-3 w-3" />
+                  {topic.filterType === "user" ? (
+                    <User className="h-3 w-3" />
                   ) : (
-                    <span className="h-2 w-2 bg-secondary rounded-full" />
+                    <MessageSquare className="h-3 w-3" />
                   )}
-                  <span>{result.roomName}</span>
+                  <span>{topic.filterValue}</span>
                   <Badge
-                    variant={selectedTabs.has(result.roomId) ? "secondary" : "outline"}
+                    variant={activeTopicId === topic.id ? "secondary" : "outline"}
                     className="ml-1 text-xs"
                   >
-                    {result.messages.length}
+                    {topic.results.reduce((sum, r) => sum + r.messages.length, 0)}
                   </Badge>
+                  <X
+                    className="h-3 w-3 ml-1 hover:text-red-500"
+                    onClick={(e) => removeTopic(topic.id, e)}
+                  />
                 </button>
               ))}
             </div>
+
+            {/* Room Tabs */}
+            {activeTopic && (
+              <div className="flex flex-wrap gap-2">
+                {activeTopic.results.map((result) => (
+                  <button
+                    key={result.roomId}
+                    onClick={() => toggleTab(result.roomId)}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-colors",
+                      selectedTabs.has(result.roomId)
+                        ? "bg-green-500 text-white"
+                        : "bg-muted hover:bg-muted/80"
+                    )}
+                  >
+                    {selectedTabs.has(result.roomId) ? (
+                      <X className="h-3 w-3" />
+                    ) : (
+                      <span className="h-2 w-2 bg-secondary rounded-full" />
+                    )}
+                    <span>{result.roomName}</span>
+                    <Badge
+                      variant={selectedTabs.has(result.roomId) ? "secondary" : "outline"}
+                      className="ml-1 text-xs"
+                    >
+                      {result.messages.length}
+                    </Badge>
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Messages List */}
             {totalMessages === 0 ? (

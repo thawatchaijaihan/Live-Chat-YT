@@ -12,11 +12,30 @@ import { formatThaiTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { MessageSquare, Radio, ChevronDown, X, Plus, Loader2, WifiOff, Search } from "lucide-react";
 
-const MESSAGE_POLL_INTERVAL_MS = 2500;
+const MESSAGE_POLL_INTERVAL_MS = 1500; // Reduced from 2500 for better mobile sync
 const MESSAGE_POLL_LIMIT = 300;
 const MESSAGE_SNAPSHOT_LIMIT = 120;
 const WAKE_REFRESH_THROTTLE_MS = 2000;
 const NEAR_BOTTOM_PX = 240;
+const WAKE_POLL_COUNT = 3; // Poll immediately 3 times when waking up
+const WAKE_POLL_INTERVAL_MS = 500; // 500ms between wake polls
+
+// Mobile detection hook
+function useIsMobile() {
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  return isMobile;
+}
 
 function mergeMessages(existing: YouTubeMessage[], incoming: YouTubeMessage[]) {
   if (incoming.length === 0) return existing;
@@ -51,13 +70,39 @@ function getLatestMessageTimestamp(messages: YouTubeMessage[]) {
 export function ChatWindow() {
   const { rooms, activeRoomId, initialMessagesByRoom, setActiveRoom, addRoom, removeRoom, getMessages, clearMessages, searchMessages, fetchRoomStatus } = useChatRooms();
   const { messages: sseMessages, isConnected, isConnecting, isEnded, error, connect, disconnect } = useYouTubeChat();
+  const isMobile = useIsMobile();
   const [storedMessages, setStoredMessages] = React.useState<YouTubeMessage[]>(
     () => (activeRoomId ? initialMessagesByRoom[activeRoomId] ?? [] : [])
   );
   const [showScrollButton, setShowScrollButton] = React.useState(false);
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = React.useState(true);
+  const [copiedAuthorId, setCopiedAuthorId] = React.useState<string | null>(null);
   const [newRoomName, setNewRoomName] = React.useState("");
   const [newRoomInput, setNewRoomInput] = React.useState("");
+
+  const copyAuthorName = React.useCallback(async (name: string, messageId: string) => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(name);
+      } else {
+        // Fallback for older browsers
+        const textarea = document.createElement("textarea");
+        textarea.value = name;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setCopiedAuthorId(messageId);
+      window.setTimeout(() => {
+        setCopiedAuthorId((current) => (current === messageId ? null : current));
+      }, 1500);
+    } catch (error) {
+      console.error("Failed to copy author name:", error);
+    }
+  }, []);
   const lastMessageCountRef = React.useRef(0);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -68,6 +113,9 @@ export function ChatWindow() {
   const latestMessageTimestampRef = React.useRef("");
   const lastWakeRefreshRef = React.useRef(0);
   const [displayLimit, setDisplayLimit] = React.useState(100);
+  const [lastSyncTime, setLastSyncTime] = React.useState<number>(Date.now());
+  const [isSyncing, setIsSyncing] = React.useState(false);
+  const [lastPolledCount, setLastPolledCount] = React.useState(0);
 
   // Active room
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
@@ -86,7 +134,6 @@ export function ChatWindow() {
       if (prevRoomIdRef.current && prevRoomIdRef.current !== activeRoomId) {
         disconnect();
         setStoredMessages(cachedMessages);
-        setDisplayLimit(100); // Reset display limit when switching rooms
       } else if (storedMessages.length === 0 && cachedMessages.length > 0) {
         setStoredMessages(cachedMessages);
         lastMessageCountRef.current = cachedMessages.length;
@@ -97,7 +144,16 @@ export function ChatWindow() {
         const nextMessages = msgs.length > 0 ? msgs : cachedMessages;
         setStoredMessages(nextMessages);
         lastMessageCountRef.current = nextMessages.length;
-        setDisplayLimit(100); // Reset to show latest 100
+        setDisplayLimit(isMobile ? 50 : 100); // Mobile: 50, Desktop: 100
+
+        // Auto scroll to bottom after loading messages
+        setTimeout(() => {
+          if (containerRef.current) {
+            containerRef.current.scrollTop = containerRef.current.scrollHeight;
+            setIsAutoScrollEnabled(true);
+            setShowScrollButton(false);
+          }
+        }, 100);
       });
 
       // Start SSE connection
@@ -120,18 +176,27 @@ export function ChatWindow() {
   }, [sseMessages]);
 
   const syncLatestMessages = React.useCallback(async (roomId: string, options: { incremental?: boolean } = {}) => {
-    const after = options.incremental ? latestMessageTimestampRef.current || undefined : undefined;
-    const messages = await getMessages(
-      roomId,
-      after
-        ? {
-            after,
-            limit: MESSAGE_POLL_LIMIT,
-          }
-        : MESSAGE_SNAPSHOT_LIMIT
-    );
+    setIsSyncing(true);
+    try {
+      const after = options.incremental ? latestMessageTimestampRef.current || undefined : undefined;
+      const messages = await getMessages(
+        roomId,
+        after
+          ? {
+              after,
+              limit: MESSAGE_POLL_LIMIT,
+            }
+          : MESSAGE_SNAPSHOT_LIMIT
+      );
 
-    setStoredMessages((prev) => mergeMessages(prev, messages));
+      setStoredMessages((prev) => mergeMessages(prev, messages));
+      setLastSyncTime(Date.now());
+      setLastPolledCount(messages.length);
+    } catch (error) {
+      console.error("Sync failed:", error);
+    } finally {
+      setIsSyncing(false);
+    }
   }, [getMessages]);
 
   // EventSource is the fast path. This polling path keeps mobile browsers in sync
@@ -140,19 +205,39 @@ export function ChatWindow() {
     if (!activeRoomId) return;
 
     let isCancelled = false;
+    let pollTimeoutId: NodeJS.Timeout | null = null;
 
     const pollLatestMessages = async () => {
-      const messages = await getMessages(activeRoomId, MESSAGE_SNAPSHOT_LIMIT);
       if (isCancelled) return;
-      setStoredMessages((prev) => mergeMessages(prev, messages));
+
+      setIsSyncing(true);
+      try {
+        const messages = await getMessages(activeRoomId, MESSAGE_SNAPSHOT_LIMIT);
+        if (!isCancelled) {
+          setStoredMessages((prev) => mergeMessages(prev, messages));
+          setLastSyncTime(Date.now());
+          setLastPolledCount(messages.length);
+        }
+      } catch (error) {
+        console.error("Polling failed:", error);
+      } finally {
+        setIsSyncing(false);
+      }
+
+      // Schedule next poll
+      if (!isCancelled) {
+        pollTimeoutId = setTimeout(pollLatestMessages, MESSAGE_POLL_INTERVAL_MS);
+      }
     };
 
+    // Start polling
     pollLatestMessages();
-    const intervalId = window.setInterval(pollLatestMessages, MESSAGE_POLL_INTERVAL_MS);
 
     return () => {
       isCancelled = true;
-      window.clearInterval(intervalId);
+      if (pollTimeoutId) {
+        clearTimeout(pollTimeoutId);
+      }
     };
   }, [activeRoomId, getMessages]);
 
@@ -166,7 +251,32 @@ export function ChatWindow() {
       if (now - lastWakeRefreshRef.current < WAKE_REFRESH_THROTTLE_MS) return;
       lastWakeRefreshRef.current = now;
 
+      // Immediate sync
       void syncLatestMessages(activeRoomId);
+
+      // Multiple immediate polls to catch up missed messages
+      let wakePollCount = 0;
+      const wakePoll = async () => {
+        if (wakePollCount >= WAKE_POLL_COUNT) return;
+        wakePollCount++;
+        setIsSyncing(true);
+        try {
+          const messages = await getMessages(activeRoomId, MESSAGE_SNAPSHOT_LIMIT);
+          setStoredMessages((prev) => mergeMessages(prev, messages));
+          setLastSyncTime(Date.now());
+          setLastPolledCount(messages.length);
+        } catch (error) {
+          console.error("Wake poll failed:", error);
+        } finally {
+          setIsSyncing(false);
+        }
+        if (wakePollCount < WAKE_POLL_COUNT) {
+          setTimeout(wakePoll, WAKE_POLL_INTERVAL_MS);
+        }
+      };
+      wakePoll();
+
+      // Reconnect SSE
       connect(activeRoomId);
     };
 
@@ -181,7 +291,7 @@ export function ChatWindow() {
       window.removeEventListener("focus", wakeAndSync);
       window.removeEventListener("online", wakeAndSync);
     };
-  }, [activeRoomId, connect, syncLatestMessages]);
+  }, [activeRoomId, connect, syncLatestMessages, getMessages]);
 
   // Poll for live restart - check every 10 seconds for ended rooms that are now live
   React.useEffect(() => {
@@ -311,6 +421,16 @@ export function ChatWindow() {
     return name.split(/\s+/).map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   };
 
+  const getTimeAgo = (timestamp: number) => {
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+    if (seconds < 1) return "now";
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ago`;
+  };
+
   const getUserColor = (user: string) => {
     const colors = ["bg-red-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-purple-500", "bg-pink-500", "bg-indigo-500", "bg-orange-500", "bg-teal-500"];
     return colors[user.charCodeAt(0) % colors.length];
@@ -394,7 +514,7 @@ export function ChatWindow() {
                   setActiveRoom(room.id);
                 }}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm whitespace-nowrap shrink-0 min-w-0 max-w-[82vw]",
+                  "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm whitespace-nowrap shrink-0 min-w-0 max-w-[82vw] cursor-pointer",
                   isActiveRoom
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted hover:bg-muted/80"
@@ -415,7 +535,7 @@ export function ChatWindow() {
                     aria-label={`Delete ${room.name}`}
                     role="button"
                     tabIndex={0}
-                    className="h-3 w-3 ml-1 shrink-0 hover:bg-primary-foreground/20 rounded-full p-0.5"
+                    className="h-3 w-3 ml-1 shrink-0 hover:bg-primary-foreground/20 rounded-full p-0.5 cursor-pointer"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -430,7 +550,10 @@ export function ChatWindow() {
           })}
         </div>
         {activeRoom && (
-          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground min-w-0 max-w-full">
+          <div className={cn(
+            "flex mt-2 text-muted-foreground min-w-0 max-w-full",
+            isMobile ? "flex-col gap-1 text-xs" : "items-center gap-2 text-xs"
+          )}>
             {activeRoomIsConnected ? (
               <>
                 <span className="h-2 w-2 bg-red-500 rounded-full animate-pulse" />
@@ -450,12 +573,10 @@ export function ChatWindow() {
             ) : (
               <span>Not connected</span>
             )}
-            <span className="ml-auto shrink-0">{allMessages.length} messages</span>
-            {displayLimit < allMessages.length && (
-              <span className="text-xs text-muted-foreground ml-2 shrink-0">
-                (แสดง {displayLimit})
-              </span>
-            )}
+            <span className={cn(
+              "shrink-0",
+              isMobile ? "text-sm font-medium" : ""
+            )}>{allMessages.length} messages</span>
           </div>
         )}
       </div>
@@ -503,17 +624,26 @@ export function ChatWindow() {
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="flex-1 min-w-0 w-full max-w-full overflow-y-auto overflow-x-hidden"
+        className={cn(
+          "flex-1 min-w-0 w-full max-w-full overflow-y-auto overflow-x-hidden",
+          isMobile ? "scroll-smooth" : ""
+        )}
       >
-        <div className="space-y-3 p-4 min-w-0 w-full max-w-full">
+        <div className={cn(
+          "space-y-3 min-w-0 w-full max-w-full",
+          isMobile ? "p-2 space-y-2" : "p-4 space-y-3"
+        )}>
           {displayLimit < orderedMessages.length && (
             <div className="flex justify-center py-4">
               <Button
-                variant="outline"
-                onClick={() => setDisplayLimit((prev) => prev + 100)}
-                className="text-sm"
+                variant={isMobile ? "default" : "outline"}
+                onClick={() => setDisplayLimit((prev) => prev + (isMobile ? 50 : 100))}
+                className={cn(
+                  "text-sm",
+                  isMobile ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""
+                )}
               >
-                แสดงเพิ่ม (+100 ข้อความ)
+                แสดงเพิ่ม (+{isMobile ? 50 : 100} ข้อความ)
               </Button>
             </div>
           )}
@@ -536,11 +666,15 @@ export function ChatWindow() {
               key={msg.id}
               data-message-id={msg.id}
               className={cn(
-                "flex items-start gap-3 transition-colors min-w-0 w-full max-w-full overflow-hidden",
+                "flex items-start transition-colors min-w-0 w-full max-w-full overflow-hidden",
+                isMobile ? "gap-2" : "gap-3",
                 highlightedMsgId === msg.id && "bg-yellow-100 dark:bg-yellow-900/30"
               )}
             >
-              <Avatar className="h-8 w-8 shrink-0">
+              <Avatar className={cn(
+                "shrink-0",
+                isMobile ? "h-6 w-6" : "h-8 w-8"
+              )}>
                 <AvatarImage src={msg.author.thumbnail} />
                 <AvatarFallback className={cn("text-white text-xs", getUserColor(msg.author.name))}>
                   {getInitials(msg.author.name)}
@@ -548,9 +682,20 @@ export function ChatWindow() {
               </Avatar>
               <div className="flex-1 min-w-0 max-w-full overflow-hidden">
                 <div className="flex items-center gap-2 flex-wrap min-w-0 max-w-full">
-                  <span className="font-medium text-sm min-w-0 max-w-full [overflow-wrap:anywhere]">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      copyAuthorName(msg.author.name, msg.id);
+                    }}
+                    className="font-medium text-sm min-w-0 max-w-full [overflow-wrap:anywhere] text-primary hover:underline focus:outline-none"
+                    title="คลิกเพื่อคัดลอกชื่อผู้ส่ง"
+                  >
                     {msg.author.name}
-                  </span>
+                  </button>
+                  {copiedAuthorId === msg.id && (
+                    <span className="text-xs text-success-foreground">คัดลอกแล้ว</span>
+                  )}
                   {msg.author.isOwner && <Badge variant="destructive" className="text-xs">Creator</Badge>}
                   {msg.author.isVerified && <Badge variant="secondary" className="text-xs">✓</Badge>}
                   {msg.isMembership && <Badge className="text-xs bg-purple-500">Member</Badge>}

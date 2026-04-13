@@ -4,6 +4,8 @@ import * as React from "react";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { DashboardContent } from "@/components/dashboard/dashboard-content";
 import { ViewersContent } from "@/components/dashboard/viewers-content";
+import { SettingsContent } from "@/components/dashboard/settings-content";
+import { AISummarizerContent } from "@/components/dashboard/ai-summarizer-content";
 import { ChatWindow } from "@/components/chat/chat-window";
 import { YouTubeChatProvider } from "@/lib/youtube-chat-context";
 import { ChatRoomsProvider, useChatRooms } from "@/lib/chat-rooms-context";
@@ -13,6 +15,8 @@ const navItems = [
   { label: "Dashboard", view: "dashboard", href: "/" },
   { label: "Live Chat", view: "chat", href: "/?view=chat" },
   { label: "Filter", view: "viewers", href: "/?view=viewers" },
+  { label: "AI", view: "ai-summarizer", href: "/?view=ai-summarizer" },
+  { label: "Settings", view: "settings", href: "/?view=settings" },
 ];
 
 function MainContent({ initialView }: { initialView: string }) {
@@ -39,13 +43,13 @@ function MainContent({ initialView }: { initialView: string }) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-0 min-w-0 w-full max-w-full overflow-hidden">
         {/* Tab bar for small screens - hidden on large screens */}
-        <div className="lg:hidden border-b px-4 py-2 shrink-0 w-full max-w-full overflow-x-hidden">
+        <div className="lg:hidden border-b px-4 py-2 shrink-0 w-full max-w-full overflow-x-hidden z-50 relative bg-background">
           <div className="flex gap-1 max-w-full overflow-x-auto">
             {navItems.map((item) => (
               <a
                 key={item.view}
                 href={item.href}
-                className={`shrink-0 px-3 py-1.5 text-sm rounded-md ${
+                className={`shrink-0 px-3 py-1.5 text-sm rounded-md cursor-pointer ${
                   activeView === item.view
                     ? "bg-secondary"
                     : "hover:bg-accent"
@@ -78,7 +82,19 @@ function MainContent({ initialView }: { initialView: string }) {
           <ViewersContent />
         )}
 
-        {activeView !== "dashboard" && activeView !== "chat" && activeView !== "viewers" && (
+        {activeView === "settings" && (
+          <div className="flex-1 overflow-auto">
+            <SettingsContent />
+          </div>
+        )}
+
+        {activeView === "ai-summarizer" && (
+          <div className="flex-1 overflow-auto">
+            <AISummarizerContent />
+          </div>
+        )}
+
+        {activeView !== "dashboard" && activeView !== "chat" && activeView !== "viewers" && activeView !== "settings" && activeView !== "ai-summarizer" && (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <p>Coming soon: {activeView}</p>
           </div>

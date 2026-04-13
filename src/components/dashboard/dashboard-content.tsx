@@ -4,16 +4,11 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useChatRooms } from "@/lib/chat-rooms-context";
-import { Loader2 } from "lucide-react";
+import { Loader2, Send } from "lucide-react";
 
 export function DashboardContent() {
-  const { rooms, activeRoomId, addRoom, removeRoom, setActiveRoom, fetchRoomStatus } = useChatRooms();
-  const [newRoomName, setNewRoomName] = React.useState("");
-  const [newRoomInput, setNewRoomInput] = React.useState("");
-  const [isFetchingName, setIsFetchingName] = React.useState(false);
-  const fetchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const { rooms, activeRoomId, removeRoom, fetchRoomStatus } = useChatRooms();
 
   // Poll room status every 3 seconds when there are active rooms
   React.useEffect(() => {
@@ -37,76 +32,18 @@ export function DashboardContent() {
     }
   }, [activeRoomId, fetchRoomStatus]);
 
-  // Auto-fetch channel name when input changes
-  const handleInputChange = (value: string) => {
-    setNewRoomInput(value);
-
-    if (fetchTimeoutRef.current) {
-      clearTimeout(fetchTimeoutRef.current);
-    }
-
-    // If room name is already customized by user, don't auto-fill
-    if (newRoomName && newRoomName !== "") {
-      return;
-    }
-
-    fetchTimeoutRef.current = setTimeout(async () => {
-      if (value.trim() && isYouTubeInput(value)) {
-        setIsFetchingName(true);
-        try {
-          const response = await fetch(`/api/channel-info?input=${encodeURIComponent(value)}`);
-          const data = await response.json();
-          if (data.name && !newRoomName) {
-            setNewRoomName(data.name);
-          }
-        } catch (error) {
-          console.error("Failed to fetch channel name:", error);
-        } finally {
-          setIsFetchingName(false);
-        }
-      }
-    }, 1000);
-  };
-
-  const isYouTubeInput = (input: string): boolean => {
-    const trimmed = input.trim();
-    if (
-      trimmed.includes("youtube.com") ||
-      trimmed.includes("youtu.be") ||
-      trimmed.startsWith("@") ||
-      /^[a-zA-Z0-9_-]{11}$/.test(trimmed)
-    ) {
-      return true;
-    }
-    return false;
-  };
-
-  const handleAddRoom = async () => {
-    if (newRoomName.trim() && newRoomInput.trim()) {
-      await addRoom(newRoomName.trim(), newRoomInput.trim());
-      setNewRoomName("");
-      setNewRoomInput("");
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleAddRoom();
-    }
-  };
-
   // Stats
   const totalMessages = rooms.reduce((sum, room) => sum + room.messageCount, 0);
   const connectedRooms = rooms.filter((room) => room.isConnected).length;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-w-5xl mx-auto">
       <div>
-        <h2 className="text-2xl font-bold">Live Chat Control</h2>
-        <p className="text-muted-foreground">Manage your YouTube live chat rooms</p>
+        <h2 className="text-2xl font-bold">Dashboard</h2>
+        <p className="text-muted-foreground">YouTube live chat rooms</p>
       </div>
 
-      {/* Stats + Add New Room */}
+      {/* Stats */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
         {/* Total Rooms */}
         <Card>
@@ -133,40 +70,6 @@ export function DashboardContent() {
             <p className="text-xs text-muted-foreground">across all rooms</p>
           </CardContent>
         </Card>
-
-        {/* Add New Room */}
-        <Card className="col-span-2 lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-lg">Add New Room</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex flex-col gap-2">
-              <Input
-                placeholder="YouTube URL, Channel @handle, or Video ID"
-                value={newRoomInput}
-                onChange={(e) => handleInputChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-              />
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    placeholder="Room name (auto-filled)"
-                    value={newRoomName}
-                    onChange={(e) => setNewRoomName(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className="pr-8"
-                  />
-                  {isFetchingName && (
-                    <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-                <Button onClick={handleAddRoom} disabled={!newRoomName.trim() || !newRoomInput.trim()}>
-                  Add
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Chat Rooms List */}
@@ -178,7 +81,7 @@ export function DashboardContent() {
           {rooms.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p>No chat rooms yet</p>
-              <p className="text-sm">Add a room above to start monitoring</p>
+              <p className="text-sm">ไปที่ Settings เพื่อเพิ่มห้องใหม่</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -208,6 +111,17 @@ export function DashboardContent() {
                       ) : (
                         <Badge variant="outline" className="gap-1 text-xs">
                           Disconnected
+                        </Badge>
+                      )}
+                      {room.telegramChatId ? (
+                        <Badge variant="default" className="bg-blue-500 gap-1 text-xs" title={`Telegram: ${room.telegramChatId}`}>
+                          <Send className="h-3 w-3" />
+                          Telegram
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="gap-1 text-xs text-muted-foreground">
+                          <Send className="h-3 w-3" />
+                          ไม่เชื่อมต่อ
                         </Badge>
                       )}
                     </div>
